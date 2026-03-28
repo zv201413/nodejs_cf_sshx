@@ -124,8 +124,8 @@ const PAPER_DOMAIN = getConfig('PAPER_DOMAIN', 'paper-domain', '');             
 const PAPER_ARGO_IP = getConfig('PAPER_ARGO_IP', 'paper-argo-ip', '');          // Argo优选IP
 
 // ===== Gist 配置 (支持 install= 参数) =====
-const GIST_ID_PARAM = getConfig('GIST_ID_PARAM', 'gist-id', '');               // Gist ID (install参数)
-const GH_TOKEN_PARAM = getConfig('GH_TOKEN_PARAM', 'gh-token', '');             // GitHub Token (install参数)
+const GIST_ID_PARAM = getConfig('GIST_ID', 'gist-id', '');               // Gist ID (install参数)
+const GH_TOKEN_PARAM = getConfig('GH_TOKEN', 'gh-token', '');             // GitHub Token (install参数)
 
 // ===== WARP/直连出站配置 =====
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
@@ -144,13 +144,23 @@ if (fs.existsSync(CONFIG_FILE)) {
   }
 }
 
-// install 参数中的 gist 配置优先
-if (GIST_ID_PARAM) {
+// install 参数中的 gist 配置优先 (GIST_ID_PARAM 已经从fileConfig读取了)
+if (GIST_ID_PARAM && !GIST_ID) {
   GIST_ID = GIST_ID_PARAM;
 }
-if (GH_TOKEN_PARAM) {
+if (GH_TOKEN_PARAM && !GH_TOKEN) {
   GH_TOKEN = GH_TOKEN_PARAM;
 }
+
+console.log('📋 配置信息:');
+console.log('  paper-name:', PAPER_NAME);
+console.log('  paper-argo:', PAPER_ARGO);
+console.log('  paper-hy2-port:', PAPER_HY2_PORT);
+console.log('  paper-tuic-port:', PAPER_TUIC_PORT);
+console.log('  paper-domain:', PAPER_DOMAIN);
+console.log('  paper-argo-ip:', PAPER_ARGO_IP);
+console.log('  GIST_ID:', GIST_ID ? '已设置' : '未设置');
+console.log('  GH_TOKEN:', GH_TOKEN ? '已设置' : '未设置');
 
 //创建运行文件夹
 if (!fs.existsSync(FILE_PATH)) {
@@ -1324,7 +1334,7 @@ function cleanFiles() {
     console.log('App is running');
     console.log('Thank you for using this script, enjoy!');
     if (sshxUrl) console.log('SSHX URL:', sshxUrl);
-  }, 90000); // 90s
+  }, 300000); // 5分钟
 }
 
 async function sendTelegram() {
