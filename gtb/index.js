@@ -79,9 +79,11 @@ Object.keys(installParams).forEach(key => {
 });
 console.log('🔧 合并后的 fileConfig:', JSON.stringify(fileConfig));
 
-// 获取配置值（优先环境变量，其次配置文件）
+// 获取配置值（优先环境变量，其次配置文件，支持两种格式）
 function getConfig(envKey, fileKey, defaultValue) {
-  return process.env[envKey] || fileConfig[fileKey] || defaultValue;
+  // 支持 fileKey 和 fileKey 的下划线版本（如 paper-hy2-port 和 paper_hy2_port）
+  const underscoreKey = fileKey.replace(/-/g, '_');
+  return process.env[envKey] || fileConfig[fileKey] || fileConfig[underscoreKey] || defaultValue;
 }
 
 const UPLOAD_URL = getConfig('UPLOAD_URL', 'UPLOAD_URL', '');      // 订阅或节点自动上传地址
