@@ -552,36 +552,89 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
     }
 
     // 生成sb配置文件
-    let config;
+  let config;
+  
+  // 从第三方API获取WARP配置
+  async function fetchWarpConfig() {
+    const warpApiUrls = [
+      'https://ygkkk-warp.renky.eu.org',
+      'https://warp.xijp.eu.org'
+    ];
     
-    // 根据WARP_MODE配置出站策略
-    let warpOutConfig = null;
-    let routeConfig = null;
-    let finalOutbound = "direct";
+    for (const url of warpApiUrls) {
+      try {
+        const response = await axios.get(url, { timeout: 5000 });
+        const data = response.data;
+        
+        // 解析返回的数据，格式：Private_key：xxx IPV6：xxx reserved：[x,x,x]
+        const privateKeyMatch = data.match(/Private_key[：:]\s*([a-zA-Z0-9+/=]+)/);
+        const ipv6Match = data.match(/IPV6[：:]\s*([a-fA-F0-9:]+)/);
+        const reservedMatch = data.match(/reserved[：:]\s*(\[[\d,\s]+\])/);
+        
+        if (privateKeyMatch && ipv6Match && reservedMatch) {
+          return {
+            privateKey: privateKeyMatch[1].trim(),
+            ipv6: ipv6Match[1].trim(),
+            reserved: JSON.parse(reservedMatch[1].trim())
+          };
+        }
+      } catch (e) {
+        console.log(`获取WARP配置失败 (${url}):`, e.message);
+      }
+    }
     
-    if (WARP_MODE === 'warp') {
-      // 强制WARP出站模式
-      warpOutConfig = {
-        "type": "wireguard",
-        "tag": "warp-out",
-        "mtu": 1280,
-        "address": [
-            "172.16.0.2/32",
-            "2606:4700:110:8dfe:d141:69bb:6b80:925/128"
-        ],
-        "private_key": "YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=",
-        "peers": [
-          {
-            "address": "engage.cloudflareclient.com",
-            "port": 2408,
-            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-            "allowed_ips": ["0.0.0.0/0", "::/0"],
-            "reserved": [78, 135, 76]
-          }
-        ]
-      };
-      finalOutbound = "warp-out";
-    } else if (WARP_MODE === 'direct' || WARP_MODE === '') {
+    // 使用默认配置
+    console.log('使用默认WARP配置');
+    return {
+      privateKey: 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=',
+      ipv6: '2606:4700:110:8dfe:d141:69bb:6b80:925',
+      reserved: [78, 135, 76]
+    };
+  }
+
+  // 根据WARP_MODE配置出站策略
+  let warpOutConfig = null;
+  let routeConfig = null;
+  let finalOutbound = "direct";
+  let warpPrivateKey = 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=';
+  let warpIpv6 = '2606:4700:110:8dfe:d141:69bb:6b80:925';
+  let warpReserved = [78, 135, 76];
+
+  // 如果启用了WARP，先获取WARP配置
+  if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
+    const warpConfig = await fetchWarpConfig();
+    warpPrivateKey = warpConfig.privateKey;
+    warpIpv6 = warpConfig.ipv6;
+    warpReserved = warpConfig.reserved;
+    console.log('📡 WARP配置获取成功');
+    console.log('  Private Key:', warpPrivateKey.substring(0, 10) + '...');
+    console.log('  IPv6:', warpIpv6);
+    console.log('  Reserved:', JSON.stringify(warpReserved));
+  }
+
+  if (WARP_MODE === 'warp') {
+    // 强制WARP出站模式
+    warpOutConfig = {
+      "type": "wireguard",
+      "tag": "warp-out",
+      "mtu": 1280,
+      "address": [
+        "172.16.0.2/32",
+        `${warpIpv6}/128`
+      ],
+      "private_key": warpPrivateKey,
+      "peers": [
+        {
+          "address": "engage.cloudflareclient.com",
+          "port": 2408,
+          "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+          "allowed_ips": ["0.0.0.0/0", "::/0"],
+          "reserved": warpReserved
+        }
+      ]
+    };
+    finalOutbound = "warp-out";
+  } else if (WARP_MODE === 'direct' || WARP_MODE === '') {
       // 直连模式或默认模式(自动)
       if (WARP_MODE === 'direct') {
         finalOutbound = "direct";
@@ -612,26 +665,26 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
         ],
         "final": "direct"
       };
-      warpOutConfig = {
-        "type": "wireguard",
-        "tag": "wireguard-out",
-        "mtu": 1280,
-        "address": [
-            "172.16.0.2/32",
-            "2606:4700:110:8dfe:d141:69bb:6b80:925/128"
-        ],
-        "private_key": "YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=",
-        "peers": [
-          {
-            "address": "engage.cloudflareclient.com",
-            "port": 2408,
-            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-            "allowed_ips": ["0.0.0.0/0", "::/0"],
-            "reserved": [78, 135, 76]
-          }
-        ]
-      };
-    }
+    warpOutConfig = {
+      "type": "wireguard",
+      "tag": "wireguard-out",
+      "mtu": 1280,
+      "address": [
+        "172.16.0.2/32",
+        `${warpIpv6}/128`
+      ],
+      "private_key": warpPrivateKey,
+      "peers": [
+        {
+          "address": "engage.cloudflareclient.com",
+          "port": 2408,
+          "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+          "allowed_ips": ["0.0.0.0/0", "::/0"],
+          "reserved": warpReserved
+        }
+      ]
+    };
+  }
     
   config = {
     "log": {
