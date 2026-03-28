@@ -22,7 +22,8 @@ function parseInstallParams() {
   const installArg = process.argv.find(arg => arg.startsWith('install='));
   if (installArg) {
     const paramsStr = installArg.substring(8);
-    const paramRegex = /([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"/g;
+    // 支持 paper-name="xxx" 格式 (带连字符的key)
+    const paramRegex = /([a-zA-Z_][a-zA-Z0-9_\-]*)="([^"]*)"/g;
     let match;
     while ((match = paramRegex.exec(paramsStr)) !== null) {
       installParams[match[1]] = match[2];
@@ -37,7 +38,8 @@ function parseInstallParams() {
         const trimmed = line.trim();
         if (trimmed && trimmed.startsWith('install=')) {
           const paramsStr = trimmed.substring(8);
-          const paramRegex = /([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"/g;
+          // 支持 paper-name="xxx" 格式 (带连字符的key)
+          const paramRegex = /([a-zA-Z_][a-zA-Z0-9_\-]*)="([^"]*)"/g;
           let match;
           while ((match = paramRegex.exec(paramsStr)) !== null) {
             installParams[match[1]] = match[2];
