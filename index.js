@@ -95,6 +95,12 @@ const GIST_SUB_FILE = getConfig('GIST_SUB_FILE', 'gist-sub-file', 'sub.txt');   
 const PAPER_HY2_PORT = getConfig('PAPER_HY2_PORT', 'paper-hy2-port', '');       // Hysteria2端口
 const PAPER_REALITY_PORT = getConfig('PAPER_REALITY_PORT', 'paper-reality-port', ''); // Reality端口
 const PAPER_VLESS_PORT = getConfig('PAPER_VLESS_PORT', 'paper-vless-port', '');    // VLESS端口
+const PAPER_DOMAIN = getConfig('PAPER_DOMAIN', 'paper-domain', '');              // 自定义域名/IP
+const PAPER_ARGO_IP = getConfig('PAPER_ARGO_IP', 'paper-argo-ip', '');          // Argo优选IP
+
+// ===== Gist 配置 (支持 install= 参数) =====
+const GIST_ID_PARAM = getConfig('GIST_ID_PARAM', 'gist-id', '');               // Gist ID (install参数)
+const GH_TOKEN_PARAM = getConfig('GH_TOKEN_PARAM', 'gh-token', '');             // GitHub Token (install参数)
 
 // ===== WARP/直连出站配置 =====
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
@@ -111,6 +117,14 @@ if (fs.existsSync(CONFIG_FILE)) {
   } catch (e) {
     console.log('⚠️ config.json 读取失败，使用环境变量');
   }
+}
+
+// install 参数中的 gist 配置优先
+if (GIST_ID_PARAM) {
+  GIST_ID = GIST_ID_PARAM;
+}
+if (GH_TOKEN_PARAM) {
+  GH_TOKEN = GH_TOKEN_PARAM;
 }
 
 //创建运行文件夹
@@ -1176,6 +1190,9 @@ async function generateLinks(argoDomain) {
   const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : HY2_PORT;
   const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_PORT;
   
+  // 自定义域名/IP配置
+  const actualDomain = PAPER_DOMAIN || CFIP;
+  
   return new Promise((resolve) => {
     setTimeout(() => {
       let subTxt = '';
@@ -1184,12 +1201,14 @@ async function generateLinks(argoDomain) {
       if ((DISABLE_ARGO !== 'true' && DISABLE_ARGO !== true) && argoDomain) {
         // 根据PAPER_ARGO选择协议类型
         const argoProtocol = PAPER_ARGO || 'vmess-ws';
+        // 使用自定义的argo IP或默认CFIP
+        const argoIP = PAPER_ARGO_IP || CFIP;
         let vmessNode;
         if (argoProtocol === 'vless-ws') {
-          vmessNode = `vless://${UUID}@${CFIP}:${CFPORT}?encryption=none&type=ws&host=${argoDomain}&path=/vmess-argo?ed=2560&tls&sni=${argoDomain}&fp=firefox#${nodeName}`;
+          vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&type=ws&host=${argoDomain}&path=/vmess-argo?ed=2560&tls&sni=${argoDomain}&fp=firefox#${nodeName}`;
         } else {
           // 默认vmess-ws
-          vmessNode = `vmess://${Buffer.from(JSON.stringify({ v: '2', ps: `${nodeName}`, add: CFIP, port: CFPORT, id: UUID, aid: '0', scy: 'auto', net: 'ws', type: 'none', host: argoDomain, path: '/vmess-argo?ed=2560', tls: 'tls', sni: argoDomain, alpn: '', fp: 'firefox'})).toString('base64')}`;
+          vmessNode = `vmess://${Buffer.from(JSON.stringify({ v: '2', ps: `${nodeName}`, add: argoIP, port: CFPORT, id: UUID, aid: '0', scy: 'auto', net: 'ws', type: 'none', host: argoDomain, path: '/vmess-argo?ed=2560', tls: 'tls', sni: argoDomain, alpn: '', fp: 'firefox'})).toString('base64')}`;
         }
         subTxt = vmessNode;
       }
