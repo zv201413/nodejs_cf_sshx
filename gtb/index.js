@@ -1220,10 +1220,18 @@ async function generateLinks(argoDomain) {
   const nodeNamePrefix = PAPER_NAME || NAME || '';
   const nodeName = nodeNamePrefix ? `${nodeNamePrefix}-${ISP}` : ISP;
   
-  // 确定实际使用的端口
+  // 确定实际使用的端口 (install参数优先)
   const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
-  const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : HY2_PORT;
-  const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_PORT;
+  const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : (isValidPort(HY2_PORT) ? HY2_PORT : '');
+  const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : (isValidPort(TUIC_PORT) ? TUIC_PORT : '');
+  
+  console.log('📡 端口配置:');
+  console.log('  HY2_PORT默认:', HY2_PORT);
+  console.log('  paper-hy2-port:', PAPER_HY2_PORT);
+  console.log('  实际HY2端口:', actualHY2Port);
+  console.log('  TUIC默认:', TUIC_PORT);
+  console.log('  paper-tuic-port:', PAPER_TUIC_PORT);
+  console.log('  实际TUIC端口:', actualTUICPort);
   
   // 自定义域名/IP配置
   const actualDomain = PAPER_DOMAIN || CFIP;
@@ -1252,12 +1260,14 @@ async function generateLinks(argoDomain) {
       if (isValidPort(actualTUICPort)) {
         const tuicNode = `\ntuic://${UUID}:@${SERVER_IP}:${actualTUICPort}?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#${nodeName}`;
         subTxt += tuicNode;
+        console.log('🔗 TUIC节点:', tuicNode.trim());
       }
 
       // HY2端口是有效端口号时生成hysteria2节点
       if (isValidPort(actualHY2Port)) {
         const hysteriaNode = `\nhysteria2://${UUID}@${SERVER_IP}:${actualHY2Port}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nodeName}`;
         subTxt += hysteriaNode;
+        console.log('🔗 HY2节点:', hysteriaNode.trim());
       }
 
       // Reality端口是有效端口号时生成reality节点
