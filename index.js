@@ -13,29 +13,51 @@ const { execSync } = require('child_process');
 // 解析 install= 参数 (格式: install=key="value" key2="value2")
 function parseInstallParams() {
   const installParams = {};
+  
+  // 1. 先从命令行参数读取
   const installArg = process.argv.find(arg => arg.startsWith('install='));
   if (installArg) {
-    const paramsStr = installArg.substring(8); // 移除 'install='
+    const paramsStr = installArg.substring(8);
     const paramRegex = /([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"/g;
     let match;
     while ((match = paramRegex.exec(paramsStr)) !== null) {
       installParams[match[1]] = match[2];
     }
   }
+  
+  // 2. 再从 application.properties 文件中读取 install= 开头的行
+  const appConfigFile = path.join(__dirname, 'application.properties');
+  if (fs.existsSync(appConfigFile)) {
+    try {
+      const content = fs.readFileSync(appConfigFile, 'utf-8');
+      content.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed && trimmed.startsWith('install=')) {
+          const paramsStr = trimmed.substring(8);
+          const paramRegex = /([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"/g;
+          let match;
+          while ((match = paramRegex.exec(paramsStr)) !== null) {
+            installParams[match[1]] = match[2];
+          }
+        }
+      });
+    } catch (e) {}
+  }
+  
   return installParams;
 }
 
 const installParams = parseInstallParams();
 
 // 读取 application.properties（必须在使用 getConfig 之前）
-const appConfigFile = path.join(__dirname, 'application.properties');
 const fileConfig = {};
 if (fs.existsSync(appConfigFile)) {
   try {
     const content = fs.readFileSync(appConfigFile, 'utf-8');
     content.split('\n').forEach(line => {
       const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#')) {
+      // 跳过 install= 开头的行（已经在 parseInstallParams 中处理）
+      if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('install=')) {
         const idx = trimmed.indexOf('=');
         if (idx > 0) {
           const key = trimmed.substring(0, idx).trim();

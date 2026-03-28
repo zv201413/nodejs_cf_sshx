@@ -6,7 +6,26 @@
 
 ## 一分钟快速部署（翼龙面板）
 
-### 推荐方式：install= 一键启动（无需 config.json）
+### 推荐方式：install= 配置在 application.properties 文件中（最简单）
+
+这是最简单的方式，只需修改 `application.properties` 文件：
+
+1. 编辑 `application.properties`，找到 `install=` 那一行
+2. 去掉前面的 `#` 号，填入你的配置：
+```properties
+install=paper-name="JP-31.93-edu" paper-argo="vless-ws" paper-argo-ip="104.17.100.191" paper-domain="162.43.31.93" paper-hy2-port="25565" paper-tuic-port="25575" paper-sshx="true" gist-id="你的GistID" gh-token="你的Token" gist-sshx-file="sshx_JP.txt" gist-sub-file="sub_JP.txt"
+```
+
+3. 翼龙面板启动命令填写：
+```
+cd nodejs && npm install && npm start
+```
+
+程序会自动读取 `application.properties` 中的 `install=` 配置。
+
+---
+
+### 命令行方式：install= 直接加在启动命令中
 
 在翼龙面板启动命令中填写：
 ```
