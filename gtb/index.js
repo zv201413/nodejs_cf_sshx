@@ -633,39 +633,42 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
       };
     }
     
-    config = {
-      "log": {
-        "disabled": true,
-        "level": "error",
-        "timestamp": true
-      },
-      "inbounds": [
-        {
-          "tag": "vmess-ws-in",
-          "type": "vmess",
-          "listen": "::",
-          "listen_port": ARGO_PORT,
-          "users": [
-            {
-              "uuid": UUID
-            }
-          ],
-          "transport": {
-            "type": "ws",
-            "path": "/vmess-argo",
-            "early_data_header_name": "Sec-WebSocket-Protocol"
+  config = {
+    "log": {
+      "disabled": true,
+      "level": "error",
+      "timestamp": true
+    },
+    "inbounds": [
+      {
+        "tag": "vmess-ws-in",
+        "type": "vmess",
+        "listen": "::",  // Argo模式下应该禁用，但这里保持兼容
+        "listen_port": ARGO_PORT,
+        "users": [
+          {
+            "uuid": UUID
           }
+        ],
+        "tls": {
+          "enabled": false  // Argo模式下TLS由隧道外部提供，禁用本地TLS
+        },
+        "transport": {
+          "type": "ws",
+          "path": "/vmess-argo",
+          "early_data_header_name": "Sec-WebSocket-Protocol"
         }
-      ],
-      "endpoints": warpOutConfig ? [warpOutConfig] : [],
-      "outbounds": [
-        {
-          "type": "direct",
-          "tag": "direct"
-        }
-      ],
-      "route": routeConfig || { "final": finalOutbound }
-    };
+      }
+    ],
+    "endpoints": warpOutConfig ? [warpOutConfig] : [],
+    "outbounds": [
+      {
+        "type": "direct",
+        "tag": "direct"
+      }
+    ],
+    "route": routeConfig || { "final": finalOutbound }
+  };
 
     // 确定实际使用的端口 (paper- 参数优先)
     const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
@@ -1262,13 +1265,15 @@ async function generateLinks(argoDomain) {
         const argoIP = PAPER_ARGO_IP || CFIP;
         let vmessNode;
         if (argoProtocol === 'vless-ws') {
-          // vless-ws 格式修复: path需要URL编码，添加security=tls
-          vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&security=tls&sni=${argoDomain}&fp=chrome&alpn=h2&insecure=1&allowInsecure=1&type=ws&host=${argoDomain}&path=%2Fvless-argo#${nodeName}`;
+          // vless-ws 格式 (参考 PaperMC_WorldMagic)
+          // path 需要URL编码，argo模式下使用 /vless-argo
+          vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&security=tls&sni=${argoDomain}&type=ws&host=${argoDomain}&path=%2Fvless-argo&fp=chrome&alpn=h2#${nodeName}`;
         } else {
           // 默认vmess-ws
-          vmessNode = `vmess://${Buffer.from(JSON.stringify({ v: '2', ps: `${nodeName}`, add: argoIP, port: CFPORT, id: UUID, aid: '0', scy: 'auto', net: 'ws', type: 'none', host: argoDomain, path: '/vmess-argo?ed=2560', tls: 'tls', sni: argoDomain, alpn: '', fp: 'firefox'})).toString('base64')}`;
+          vmessNode = `vmess://${Buffer.from(JSON.stringify({ v: '2', ps: `${nodeName}`, add: argoIP, port: CFPORT, id: UUID, aid: '0', scy: 'auto', net: 'ws', type: 'none', host: argoDomain, path: '/vmess-argo', tls: 'tls', sni: argoDomain, alpn: 'h2', fp: 'chrome', allowInsecure: 1 })).toString('base64')}`;
         }
         subTxt = vmessNode;
+        console.log('🔗 Argo节点:', vmessNode.substring(0, 100) + '...');
       }
 
       // TUIC端口是有效端口号时生成tuic节点
