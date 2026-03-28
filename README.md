@@ -6,7 +6,42 @@
 
 ## 一分钟快速部署（翼龙面板）
 
-### 第一步：创建 GitHub Gist
+### 推荐方式：install= 一键启动（无需 config.json）
+
+在翼龙面板启动命令中填写：
+```
+cd nodejs && npm install && node index.js install=paper-name="你的名称" paper-hy2-port="25565" paper-tuic-port="25575" paper-sshx="true" gist-id="你的GistID" gh-token="你的GitHubToken" gist-sshx-file="sshx.txt" gist-sub-file="sub.txt"
+```
+
+### 参数说明
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `paper-name` | 节点名称前缀 | `JP`, `US`, `CN-edu` |
+| `paper-argo` | Argo协议类型 | `vmess-ws`, `vless-ws` |
+| `paper-argo-ip` | Argo优选IP | `104.17.100.191` |
+| `paper-domain` | 自定义节点地址 | `162.43.31.93` |
+| `paper-hy2-port` | Hysteria2端口 | `25565` |
+| `paper-tuic-port` | TUIC端口 | `25575` |
+| `paper-reality-port` | Reality端口 | `443` |
+| `paper-sshx` | 启用SSHX | `true`, `false` |
+| `gist-id` | Gist ID | `b514d28028de5dcefeb32855a24b9ad5` |
+| `gh-token` | GitHub Token | `ghp_xxxxx` |
+| `gist-sshx-file` | Gist SSHX文件名 | `sshx_JP.txt` |
+| `gist-sub-file` | Gist订阅文件名 | `sub_JP.txt` |
+| `warp-mode` | WARP出站模式 | `warp`, `direct`, 空(自动) |
+
+### 完整示例
+
+```
+cd nodejs && npm install && node index.js install=paper-domain="162.43.31.93" paper-name="JP-31.93-edu" paper-argo="vless-ws" paper-argo-ip="104.17.100.191" paper-hy2-port="25565" paper-tuic-port="25575" paper-sshx="true" gist-id="b514d28028de5dcefeb32855a24b9ad5" gh-token="ghp_xxxxx" gist-sshx-file="sshx_JP-31.93-edu.txt" gist-sub-file="sub_JP-31.93-edu.txt"
+```
+
+---
+
+### 传统方式：config.json 配置
+
+#### 第一步：创建 GitHub Gist
 
 1. 登录 GitHub，访问 https://gist.github.com
 2. 点击 **Create new gist**
@@ -15,11 +50,11 @@
 5. 复制浏览器地址栏的 Gist ID：
    ```
    https://gist.github.com/你的用户名/f2a431371c0c1bf9857cf1d66f159816
-                                                        ^^^^^^^^^^^^^^^^^^^
-                                                        这串就是 Gist ID
+                                                 ^^^^^^^^^^^^^^^^^^^
+                                                 这串就是 Gist ID
    ```
 
-### 第二步：获取 GitHub Token
+#### 第二步：获取 GitHub Token
 
 1. 登录 GitHub
 2. 进入 **Settings > Developer settings > Personal access tokens > Fine-grained tokens**
@@ -31,7 +66,7 @@
    - **Permissions**: 下滑找到 **Gists**，勾选 **Manage**
 5. 点击 **Generate token**，复制生成的 Token
 
-### 第三步：上传项目到翼龙面板
+#### 第三步：上传项目到翼龙面板
 
 1. 下载本项目，解压
 2. 进入翼龙面板 **文件管理器**，上传整个项目
@@ -43,7 +78,7 @@
    }
    ```
 
-### 第四步：配置代理参数
+#### 第四步：配置代理参数
 
 编辑 `application.properties`（如果没有就创建）：
 ```properties
@@ -52,7 +87,7 @@ HY2_PORT=25565
 ENABLE_SSHX=true
 ```
 
-### 第五步：启动
+#### 第五步：启动
 
 在翼龙面板启动命令中填写：
 ```
@@ -61,7 +96,7 @@ cd nodejs && npm install && npm start
 
 点击启动，等待 10 秒左右。
 
-### 第六步：查看 SSHX 链接
+#### 第六步：查看 SSHX 链接
 
 **方式一**：访问 `http://你的域名:3000/sshx`
 
@@ -219,13 +254,24 @@ npm start
 |------|------|
 | `UUID` | 代理用户标识，留空自动生成 |
 | `HY2_PORT` | Hysteria2 端口 |
+| `TUIC_PORT` | TUIC 端口 |
+| `REALITY_PORT` | Reality 端口 |
 | `ENABLE_SSHX` | 设为 `true` 启用 SSHX |
 | `GIST_ID` | GitHub Gist ID |
 | `GH_TOKEN` | GitHub Personal Access Token |
 | `ARGO_AUTH` | Argo 隧道 Token（可选） |
 | `ARGO_DOMAIN` | Argo 域名（可选） |
+| `WARP_MODE` | WARP出站模式: warp/direct/留空(自动) |
 
-> **提示**：在翼龙面板中，请使用 `config.json` 和 `application.properties` 文件配置，不要使用环境变量。
+### install= 参数（推荐）
+
+在启动命令中使用 `install=` 参数，一行配置所有选项：
+
+```
+node index.js install=paper-name="JP" paper-argo="vless-ws" paper-hy2-port="25565" paper-tuic-port="25575" paper-sshx="true" gist-id="xxx" gh-token="xxx"
+```
+
+> **提示**：在翼龙面板中，推荐使用 `install=` 参数或 `application.properties` 文件配置。
 
 ---
 
