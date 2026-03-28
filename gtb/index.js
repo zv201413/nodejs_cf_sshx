@@ -51,6 +51,7 @@ function parseInstallParams() {
 }
 
 const installParams = parseInstallParams();
+console.log('🔧 解析到的 install 参数:', JSON.stringify(installParams));
 
 // 读取 application.properties（必须在使用 getConfig 之前）
 const fileConfig = {};
@@ -76,6 +77,7 @@ if (fs.existsSync(appConfigFile)) {
 Object.keys(installParams).forEach(key => {
   fileConfig[key] = installParams[key];
 });
+console.log('🔧 合并后的 fileConfig:', JSON.stringify(fileConfig));
 
 // 获取配置值（优先环境变量，其次配置文件）
 function getConfig(envKey, fileKey, defaultValue) {
