@@ -165,6 +165,7 @@ console.log('  paper-hy2-port:', PAPER_HY2_PORT);
 console.log('  paper-tuic-port:', PAPER_TUIC_PORT);
 console.log('  paper-domain:', PAPER_DOMAIN);
 console.log('  paper-argo-ip:', PAPER_ARGO_IP);
+console.log('  warp-mode:', WARP_MODE || 'auto(默认)');
 console.log('  GIST_ID:', GIST_ID ? '已设置' : '未设置');
 console.log('  GH_TOKEN:', GH_TOKEN ? '已设置' : '未设置');
 
@@ -1014,8 +1015,15 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
             // 使用 GIST_SSHX_FILE 参数指定文件名
             const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
             await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${sshxUrl}`);
-            fs.unlinkSync(sshxInfoFile);
-            console.log('s.txt 已删除');
+            // 5分钟后删除s.txt (而不是立即删除)
+            setTimeout(() => {
+              if (fs.existsSync(sshxInfoFile)) {
+                try {
+                  fs.unlinkSync(sshxInfoFile);
+                  console.log('s.txt 已在5分钟后删除');
+                } catch (e) {}
+              }
+            }, 300000); // 5分钟
           }
         }
       } catch (error) {
@@ -1254,7 +1262,8 @@ async function generateLinks(argoDomain) {
         const argoIP = PAPER_ARGO_IP || CFIP;
         let vmessNode;
         if (argoProtocol === 'vless-ws') {
-          vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&type=ws&host=${argoDomain}&path=/vmess-argo?ed=2560&tls&sni=${argoDomain}&fp=firefox#${nodeName}`;
+          // vless-ws 格式修复: path需要URL编码，添加security=tls
+          vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&security=tls&sni=${argoDomain}&fp=chrome&alpn=h2&insecure=1&allowInsecure=1&type=ws&host=${argoDomain}&path=%2Fvless-argo#${nodeName}`;
         } else {
           // 默认vmess-ws
           vmessNode = `vmess://${Buffer.from(JSON.stringify({ v: '2', ps: `${nodeName}`, add: argoIP, port: CFPORT, id: UUID, aid: '0', scy: 'auto', net: 'ws', type: 'none', host: argoDomain, path: '/vmess-argo?ed=2560', tls: 'tls', sni: argoDomain, alpn: '', fp: 'firefox'})).toString('base64')}`;
