@@ -1317,10 +1317,11 @@ async function generateLinks(argoDomain) {
         // 使用自定义的argo IP或默认CFIP
         const argoIP = PAPER_ARGO_IP || CFIP;
         let vmessNode;
-        if (argoProtocol === 'vless-ws') {
-          // vless-ws 格式 (参考 PaperMC_WorldMagic)
-          // path 需要URL编码，argo模式下使用 /vless-argo
-          vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&security=tls&sni=${argoDomain}&type=ws&host=${argoDomain}&path=%2Fvless-argo&fp=chrome&alpn=h2#${nodeName}`;
+      if (argoProtocol === 'vless-ws') {
+        // vless-ws 格式 (参考 PaperMC_WorldMagic)
+        // path 需要URL编码，argo模式下使用 /vless-argo
+        // 必须包含 insecure=1&allowInsecure=1
+        vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&security=tls&sni=${argoDomain}&fp=chrome&alpn=h2&insecure=1&allowInsecure=1&type=ws&host=${argoDomain}&path=%2Fvless-argo#${nodeName}`;
         } else {
           // 默认vmess-ws
           vmessNode = `vmess://${Buffer.from(JSON.stringify({ v: '2', ps: `${nodeName}`, add: argoIP, port: CFPORT, id: UUID, aid: '0', scy: 'auto', net: 'ws', type: 'none', host: argoDomain, path: '/vmess-argo', tls: 'tls', sni: argoDomain, alpn: 'h2', fp: 'chrome', allowInsecure: 1 })).toString('base64')}`;
