@@ -19,17 +19,14 @@
 
 ### 推荐方式：下载 `index.js`、 `package.json`、 `application.properties` 三个文件
 
-1. 在游戏机页面找到ip和端口后打开 [参数面板](https://zv201413.github.io/PaperMC_WorldMagic/)
-
-复制命令后粘贴 `install=` 命令到 `application.properties文件：
+1. 在游戏机页面找到ip和端口后打开 [参数面板](https://zv201413.github.io/PaperMC_WorldMagic/)复制后粘贴 `install=` 命令到 `application.properties文件：
 ```properties
 install=paper-name="JP" paper-argo="vless-ws" paper-hy2-port="25565" paper-tuic-port="25575" paper-sshx="true" gist-id="你的GistID" gh-token="你的Token" gist-sshx-file="sshx_JP.txt" gist-sub-file="sub_JP.txt"
 ```
-
-2. 翼龙面板启动或重启
-
+2. 将 `index.js`、 `package.json`、 `application.properties` 三个文件上传根目录后启动或重启翼龙面板
 程序会自动读取 `application.properties` 中的 `install=` 配置。
 
+3. 复制节点即可，如配置github gist脚本也会自动推送
 ---
 
 ### 参数说明
@@ -67,7 +64,7 @@ install=paper-name="JP" paper-argo="vless-ws" paper-hy2-port="25565" paper-tuic-
 install=paper-domain="147.135.213.131" paper-name="kama" paper-argo="vless-ws" paper-hy2-port="20082" paper-tuic-port="25575" paper-sshx="true" gist-id="你的GistID" gh-token="你的Token" gist-sshx-file="sshx_kama.txt" gist-sub-file="sub_kama.txt"
 ```
 
-## 传统方式：config.json 配置
+## 传统方式
 
 ### 第一步：创建 GitHub Gist
 
@@ -155,9 +152,3 @@ A: 在 install 参数中添加 `warp-mode="warp"` 强制 WARP 出站，或留空
 - **[MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat)** — sing-box 规则集数据来源
 
 ---
-
-## 许可证
-
-MIT
-
-本项目仅供技术研究与学习使用，请勿用于任何违法用途。
