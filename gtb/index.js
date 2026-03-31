@@ -1309,8 +1309,8 @@ async function generateLinks(argoDomain) {
   console.log('  实际TUIC端口:', actualTUICPort);
   
   // 自定义域名/IP配置
-  const actualDomain = PAPER_DOMAIN || CFIP;
-  
+  const actualDomain = PAPER_DOMAIN || SERVER_IP;
+
   return new Promise((resolve) => {
     setTimeout(() => {
       let subTxt = '';
@@ -1337,21 +1337,21 @@ async function generateLinks(argoDomain) {
 
       // TUIC端口是有效端口号时生成tuic节点
       if (isValidPort(actualTUICPort)) {
-        const tuicNode = `\ntuic://${UUID}:@${SERVER_IP}:${actualTUICPort}?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#${nodeName}`;
+        const tuicNode = `\ntuic://${UUID}:@${actualDomain}:${actualTUICPort}?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#${nodeName}`;
         subTxt += tuicNode;
         console.log('🔗 TUIC节点:', tuicNode.trim());
       }
 
       // HY2端口是有效端口号时生成hysteria2节点
       if (isValidPort(actualHY2Port)) {
-        const hysteriaNode = `\nhysteria2://${UUID}@${SERVER_IP}:${actualHY2Port}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nodeName}`;
+        const hysteriaNode = `\nhysteria2://${UUID}@${actualDomain}:${actualHY2Port}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nodeName}`;
         subTxt += hysteriaNode;
         console.log('🔗 HY2节点:', hysteriaNode.trim());
       }
 
       // Reality端口是有效端口号时生成reality节点
       if (isValidPort(actualRealityPort)) {
-        const vlessNode = `\nvless://${UUID}@${SERVER_IP}:${actualRealityPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=firefox&pbk=${publicKey}&type=tcp&headerType=none#${nodeName}`;
+        const vlessNode = `\nvless://${UUID}@${actualDomain}:${actualRealityPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=firefox&pbk=${publicKey}&type=tcp&headerType=none#${nodeName}`;
         subTxt += vlessNode;
       }
 
