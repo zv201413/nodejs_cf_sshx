@@ -61,9 +61,6 @@ A: 程序会自动调用 IP API 获取国家代码和 ISP 信息，格式为：`
 **Q: Gist 同步失败？**
 A: 检查 `gist-id` 和 `gh-token` 是否正确
 
-**Q: SSHX 链接打不开？**
-A: 确保已在 Cloudflare Zero Trust 创建 SSHX 应用并配置邮箱验证
-
 ---
 
 ## 鸣谢
