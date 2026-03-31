@@ -18,11 +18,10 @@
 ## 一分钟快速部署（翼龙面板）
 
 ### 推荐方式：下载 `index.js`、 `package.json`、 `application.properties` 三个文件
-install= 配置在 application.properties 文件中
 
-这是最简单的方式，只需修改 `application.properties` 文件：
+1. 在游戏机页面找到ip和端口后打开 [参数面板](https://zv201413.github.io/PaperMC_WorldMagic/)
 
-1. 编辑 `application.properties`，粘贴 `install=` 配置行：
+复制命令后粘贴 `install=` 命令到 `application.properties文件：
 ```properties
 install=paper-name="JP" paper-argo="vless-ws" paper-hy2-port="25565" paper-tuic-port="25575" paper-sshx="true" gist-id="你的GistID" gh-token="你的Token" gist-sshx-file="sshx_JP.txt" gist-sub-file="sub_JP.txt"
 ```
