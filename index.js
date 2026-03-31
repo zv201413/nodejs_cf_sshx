@@ -10,6 +10,10 @@ require('dotenv').config();
 const { promisify } = require('util');
 const exec = promisify(require('child_process').exec);
 const { execSync } = require('child_process');
+
+// 定义配置文件路径
+const appConfigFile = path.join(__dirname, 'application.properties');
+
 // 解析 install= 参数 (格式: install=key="value" key2="value2")
 function parseInstallParams() {
   const installParams = {};
@@ -18,7 +22,8 @@ function parseInstallParams() {
   const installArg = process.argv.find(arg => arg.startsWith('install='));
   if (installArg) {
     const paramsStr = installArg.substring(8);
-    const paramRegex = /([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"/g;
+    // 支持 paper-name="xxx" 格式 (带连字符的key)
+    const paramRegex = /([a-zA-Z_][a-zA-Z0-9_\-]*)="([^"]*)"/g;
     let match;
     while ((match = paramRegex.exec(paramsStr)) !== null) {
       installParams[match[1]] = match[2];
@@ -26,7 +31,6 @@ function parseInstallParams() {
   }
   
   // 2. 再从 application.properties 文件中读取 install= 开头的行
-  const appConfigFile = path.join(__dirname, 'application.properties');
   if (fs.existsSync(appConfigFile)) {
     try {
       const content = fs.readFileSync(appConfigFile, 'utf-8');
@@ -34,7 +38,8 @@ function parseInstallParams() {
         const trimmed = line.trim();
         if (trimmed && trimmed.startsWith('install=')) {
           const paramsStr = trimmed.substring(8);
-          const paramRegex = /([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"/g;
+          // 支持 paper-name="xxx" 格式 (带连字符的key)
+          const paramRegex = /([a-zA-Z_][a-zA-Z0-9_\-]*)="([^"]*)"/g;
           let match;
           while ((match = paramRegex.exec(paramsStr)) !== null) {
             installParams[match[1]] = match[2];
@@ -48,6 +53,7 @@ function parseInstallParams() {
 }
 
 const installParams = parseInstallParams();
+console.log('🔧 解析到的 install 参数:', JSON.stringify(installParams));
 
 // 读取 application.properties（必须在使用 getConfig 之前）
 const fileConfig = {};
@@ -73,10 +79,13 @@ if (fs.existsSync(appConfigFile)) {
 Object.keys(installParams).forEach(key => {
   fileConfig[key] = installParams[key];
 });
+console.log('🔧 合并后的 fileConfig:', JSON.stringify(fileConfig));
 
-// 获取配置值（优先环境变量，其次配置文件）
+// 获取配置值（优先环境变量，其次配置文件，支持两种格式）
 function getConfig(envKey, fileKey, defaultValue) {
-  return process.env[envKey] || fileConfig[fileKey] || defaultValue;
+  // 支持 fileKey 和 fileKey 的下划线版本（如 paper-hy2-port 和 paper_hy2_port）
+  const underscoreKey = fileKey.replace(/-/g, '_');
+  return process.env[envKey] || fileConfig[fileKey] || fileConfig[underscoreKey] || defaultValue;
 }
 
 const UPLOAD_URL = getConfig('UPLOAD_URL', 'UPLOAD_URL', '');      // 订阅或节点自动上传地址
@@ -121,8 +130,8 @@ const PAPER_DOMAIN = getConfig('PAPER_DOMAIN', 'paper-domain', '');             
 const PAPER_ARGO_IP = getConfig('PAPER_ARGO_IP', 'paper-argo-ip', '');          // Argo优选IP
 
 // ===== Gist 配置 (支持 install= 参数) =====
-const GIST_ID_PARAM = getConfig('GIST_ID_PARAM', 'gist-id', '');               // Gist ID (install参数)
-const GH_TOKEN_PARAM = getConfig('GH_TOKEN_PARAM', 'gh-token', '');             // GitHub Token (install参数)
+const GIST_ID_PARAM = getConfig('GIST_ID', 'gist-id', '');               // Gist ID (install参数)
+const GH_TOKEN_PARAM = getConfig('GH_TOKEN', 'gh-token', '');             // GitHub Token (install参数)
 
 // ===== WARP/直连出站配置 =====
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
@@ -141,13 +150,24 @@ if (fs.existsSync(CONFIG_FILE)) {
   }
 }
 
-// install 参数中的 gist 配置优先
-if (GIST_ID_PARAM) {
+// install 参数中的 gist 配置优先 (GIST_ID_PARAM 已经从fileConfig读取了)
+if (GIST_ID_PARAM && !GIST_ID) {
   GIST_ID = GIST_ID_PARAM;
 }
-if (GH_TOKEN_PARAM) {
+if (GH_TOKEN_PARAM && !GH_TOKEN) {
   GH_TOKEN = GH_TOKEN_PARAM;
 }
+
+console.log('📋 配置信息:');
+console.log('  paper-name:', PAPER_NAME);
+console.log('  paper-argo:', PAPER_ARGO);
+console.log('  paper-hy2-port:', PAPER_HY2_PORT);
+console.log('  paper-tuic-port:', PAPER_TUIC_PORT);
+console.log('  paper-domain:', PAPER_DOMAIN);
+console.log('  paper-argo-ip:', PAPER_ARGO_IP);
+console.log('  warp-mode:', WARP_MODE || 'auto(默认)');
+console.log('  GIST_ID:', GIST_ID ? '已设置' : '未设置');
+console.log('  GH_TOKEN:', GH_TOKEN ? '已设置' : '未设置');
 
 //创建运行文件夹
 if (!fs.existsSync(FILE_PATH)) {
@@ -532,36 +552,89 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
     }
 
     // 生成sb配置文件
-    let config;
+  let config;
+  
+  // 从第三方API获取WARP配置
+  async function fetchWarpConfig() {
+    const warpApiUrls = [
+      'https://ygkkk-warp.renky.eu.org',
+      'https://warp.xijp.eu.org'
+    ];
     
-    // 根据WARP_MODE配置出站策略
-    let warpOutConfig = null;
-    let routeConfig = null;
-    let finalOutbound = "direct";
+    for (const url of warpApiUrls) {
+      try {
+        const response = await axios.get(url, { timeout: 5000 });
+        const data = response.data;
+        
+        // 解析返回的数据，格式：Private_key：xxx IPV6：xxx reserved：[x,x,x]
+        const privateKeyMatch = data.match(/Private_key[：:]\s*([a-zA-Z0-9+/=]+)/);
+        const ipv6Match = data.match(/IPV6[：:]\s*([a-fA-F0-9:]+)/);
+        const reservedMatch = data.match(/reserved[：:]\s*(\[[\d,\s]+\])/);
+        
+        if (privateKeyMatch && ipv6Match && reservedMatch) {
+          return {
+            privateKey: privateKeyMatch[1].trim(),
+            ipv6: ipv6Match[1].trim(),
+            reserved: JSON.parse(reservedMatch[1].trim())
+          };
+        }
+      } catch (e) {
+        console.log(`获取WARP配置失败 (${url}):`, e.message);
+      }
+    }
     
-    if (WARP_MODE === 'warp') {
-      // 强制WARP出站模式
-      warpOutConfig = {
-        "type": "wireguard",
-        "tag": "warp-out",
-        "mtu": 1280,
-        "address": [
-            "172.16.0.2/32",
-            "2606:4700:110:8dfe:d141:69bb:6b80:925/128"
-        ],
-        "private_key": "YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=",
-        "peers": [
-          {
-            "address": "engage.cloudflareclient.com",
-            "port": 2408,
-            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-            "allowed_ips": ["0.0.0.0/0", "::/0"],
-            "reserved": [78, 135, 76]
-          }
-        ]
-      };
-      finalOutbound = "warp-out";
-    } else if (WARP_MODE === 'direct' || WARP_MODE === '') {
+    // 使用默认配置
+    console.log('使用默认WARP配置');
+    return {
+      privateKey: 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=',
+      ipv6: '2606:4700:110:8dfe:d141:69bb:6b80:925',
+      reserved: [78, 135, 76]
+    };
+  }
+
+  // 根据WARP_MODE配置出站策略
+  let warpOutConfig = null;
+  let routeConfig = null;
+  let finalOutbound = "direct";
+  let warpPrivateKey = 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=';
+  let warpIpv6 = '2606:4700:110:8dfe:d141:69bb:6b80:925';
+  let warpReserved = [78, 135, 76];
+
+  // 如果启用了WARP，先获取WARP配置
+  if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
+    const warpConfig = await fetchWarpConfig();
+    warpPrivateKey = warpConfig.privateKey;
+    warpIpv6 = warpConfig.ipv6;
+    warpReserved = warpConfig.reserved;
+    console.log('📡 WARP配置获取成功');
+    console.log('  Private Key:', warpPrivateKey.substring(0, 10) + '...');
+    console.log('  IPv6:', warpIpv6);
+    console.log('  Reserved:', JSON.stringify(warpReserved));
+  }
+
+  if (WARP_MODE === 'warp') {
+    // 强制WARP出站模式
+    warpOutConfig = {
+      "type": "wireguard",
+      "tag": "warp-out",
+      "mtu": 1280,
+      "address": [
+        "172.16.0.2/32",
+        `${warpIpv6}/128`
+      ],
+      "private_key": warpPrivateKey,
+      "peers": [
+        {
+          "address": "engage.cloudflareclient.com",
+          "port": 2408,
+          "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+          "allowed_ips": ["0.0.0.0/0", "::/0"],
+          "reserved": warpReserved
+        }
+      ]
+    };
+    finalOutbound = "warp-out";
+  } else if (WARP_MODE === 'direct' || WARP_MODE === '') {
       // 直连模式或默认模式(自动)
       if (WARP_MODE === 'direct') {
         finalOutbound = "direct";
@@ -592,60 +665,68 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
         ],
         "final": "direct"
       };
-      warpOutConfig = {
-        "type": "wireguard",
-        "tag": "wireguard-out",
-        "mtu": 1280,
-        "address": [
-            "172.16.0.2/32",
-            "2606:4700:110:8dfe:d141:69bb:6b80:925/128"
-        ],
-        "private_key": "YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=",
-        "peers": [
-          {
-            "address": "engage.cloudflareclient.com",
-            "port": 2408,
-            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-            "allowed_ips": ["0.0.0.0/0", "::/0"],
-            "reserved": [78, 135, 76]
-          }
-        ]
-      };
-    }
-    
-    config = {
-      "log": {
-        "disabled": true,
-        "level": "error",
-        "timestamp": true
-      },
-      "inbounds": [
-        {
-          "tag": "vmess-ws-in",
-          "type": "vmess",
-          "listen": "::",
-          "listen_port": ARGO_PORT,
-          "users": [
-            {
-              "uuid": UUID
-            }
-          ],
-          "transport": {
-            "type": "ws",
-            "path": "/vmess-argo",
-            "early_data_header_name": "Sec-WebSocket-Protocol"
-          }
-        }
+    warpOutConfig = {
+      "type": "wireguard",
+      "tag": "wireguard-out",
+      "mtu": 1280,
+      "address": [
+        "172.16.0.2/32",
+        `${warpIpv6}/128`
       ],
-      "endpoints": warpOutConfig ? [warpOutConfig] : [],
-      "outbounds": [
+      "private_key": warpPrivateKey,
+      "peers": [
         {
-          "type": "direct",
-          "tag": "direct"
+          "address": "engage.cloudflareclient.com",
+          "port": 2408,
+          "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+          "allowed_ips": ["0.0.0.0/0", "::/0"],
+          "reserved": warpReserved
         }
-      ],
-      "route": routeConfig || { "final": finalOutbound }
+      ]
     };
+  }
+    
+  // 根据PAPER_ARGO选择inbound类型
+  const argoProtocol = PAPER_ARGO || 'vmess-ws';
+  const argoInboundType = argoProtocol === 'vless-ws' ? 'vless' : 'vmess';
+  const argoPath = argoProtocol === 'vless-ws' ? '/vless-argo' : '/vmess-argo';
+
+  config = {
+    "log": {
+      "disabled": true,
+      "level": "error",
+      "timestamp": true
+    },
+    "inbounds": [
+      {
+        "tag": `${argoInboundType}-ws-in`,
+        "type": argoInboundType,
+        "listen": "::",
+        "listen_port": ARGO_PORT,
+        "users": [
+          {
+            "uuid": UUID
+          }
+        ],
+        "tls": {
+          "enabled": false
+        },
+        "transport": {
+          "type": "ws",
+          "path": argoPath,
+          "early_data_header_name": "Sec-WebSocket-Protocol"
+        }
+      }
+    ],
+    "endpoints": warpOutConfig ? [warpOutConfig] : [],
+    "outbounds": [
+      {
+        "type": "direct",
+        "tag": "direct"
+      }
+    ],
+    "route": routeConfig || { "final": finalOutbound }
+  };
 
     // 确定实际使用的端口 (paper- 参数优先)
     const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
@@ -995,8 +1076,15 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
             // 使用 GIST_SSHX_FILE 参数指定文件名
             const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
             await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${sshxUrl}`);
-            fs.unlinkSync(sshxInfoFile);
-            console.log('s.txt 已删除');
+            // 5分钟后删除s.txt (而不是立即删除)
+            setTimeout(() => {
+              if (fs.existsSync(sshxInfoFile)) {
+                try {
+                  fs.unlinkSync(sshxInfoFile);
+                  console.log('s.txt 已在5分钟后删除');
+                } catch (e) {}
+              }
+            }, 300000); // 5分钟
           }
         }
       } catch (error) {
@@ -1207,14 +1295,22 @@ async function generateLinks(argoDomain) {
   const nodeNamePrefix = PAPER_NAME || NAME || '';
   const nodeName = nodeNamePrefix ? `${nodeNamePrefix}-${ISP}` : ISP;
   
-  // 确定实际使用的端口
+  // 确定实际使用的端口 (install参数优先)
   const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
-  const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : HY2_PORT;
-  const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_PORT;
+  const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : (isValidPort(HY2_PORT) ? HY2_PORT : '');
+  const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : (isValidPort(TUIC_PORT) ? TUIC_PORT : '');
+  
+  console.log('📡 端口配置:');
+  console.log('  HY2_PORT默认:', HY2_PORT);
+  console.log('  paper-hy2-port:', PAPER_HY2_PORT);
+  console.log('  实际HY2端口:', actualHY2Port);
+  console.log('  TUIC默认:', TUIC_PORT);
+  console.log('  paper-tuic-port:', PAPER_TUIC_PORT);
+  console.log('  实际TUIC端口:', actualTUICPort);
   
   // 自定义域名/IP配置
-  const actualDomain = PAPER_DOMAIN || CFIP;
-  
+  const actualDomain = PAPER_DOMAIN || SERVER_IP;
+
   return new Promise((resolve) => {
     setTimeout(() => {
       let subTxt = '';
@@ -1226,30 +1322,36 @@ async function generateLinks(argoDomain) {
         // 使用自定义的argo IP或默认CFIP
         const argoIP = PAPER_ARGO_IP || CFIP;
         let vmessNode;
-        if (argoProtocol === 'vless-ws') {
-          vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&type=ws&host=${argoDomain}&path=/vmess-argo?ed=2560&tls&sni=${argoDomain}&fp=firefox#${nodeName}`;
+      if (argoProtocol === 'vless-ws') {
+        // vless-ws 格式 (参考 PaperMC_WorldMagic)
+        // path 需要URL编码，argo模式下使用 /vless-argo
+        // 必须包含 insecure=1&allowInsecure=1
+        vmessNode = `vless://${UUID}@${argoIP}:${CFPORT}?encryption=none&security=tls&sni=${argoDomain}&fp=chrome&alpn=h2&insecure=1&allowInsecure=1&type=ws&host=${argoDomain}&path=%2Fvless-argo#${nodeName}`;
         } else {
           // 默认vmess-ws
-          vmessNode = `vmess://${Buffer.from(JSON.stringify({ v: '2', ps: `${nodeName}`, add: argoIP, port: CFPORT, id: UUID, aid: '0', scy: 'auto', net: 'ws', type: 'none', host: argoDomain, path: '/vmess-argo?ed=2560', tls: 'tls', sni: argoDomain, alpn: '', fp: 'firefox'})).toString('base64')}`;
+          vmessNode = `vmess://${Buffer.from(JSON.stringify({ v: '2', ps: `${nodeName}`, add: argoIP, port: CFPORT, id: UUID, aid: '0', scy: 'auto', net: 'ws', type: 'none', host: argoDomain, path: '/vmess-argo', tls: 'tls', sni: argoDomain, alpn: 'h2', fp: 'chrome', allowInsecure: 1 })).toString('base64')}`;
         }
         subTxt = vmessNode;
+        console.log('🔗 Argo节点:', vmessNode.substring(0, 100) + '...');
       }
 
       // TUIC端口是有效端口号时生成tuic节点
       if (isValidPort(actualTUICPort)) {
-        const tuicNode = `\ntuic://${UUID}:@${SERVER_IP}:${actualTUICPort}?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#${nodeName}`;
+        const tuicNode = `\ntuic://${UUID}:@${actualDomain}:${actualTUICPort}?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#${nodeName}`;
         subTxt += tuicNode;
+        console.log('🔗 TUIC节点:', tuicNode.trim());
       }
 
       // HY2端口是有效端口号时生成hysteria2节点
       if (isValidPort(actualHY2Port)) {
-        const hysteriaNode = `\nhysteria2://${UUID}@${SERVER_IP}:${actualHY2Port}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nodeName}`;
+        const hysteriaNode = `\nhysteria2://${UUID}@${actualDomain}:${actualHY2Port}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nodeName}`;
         subTxt += hysteriaNode;
+        console.log('🔗 HY2节点:', hysteriaNode.trim());
       }
 
       // Reality端口是有效端口号时生成reality节点
       if (isValidPort(actualRealityPort)) {
-        const vlessNode = `\nvless://${UUID}@${SERVER_IP}:${actualRealityPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=firefox&pbk=${publicKey}&type=tcp&headerType=none#${nodeName}`;
+        const vlessNode = `\nvless://${UUID}@${actualDomain}:${actualRealityPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=firefox&pbk=${publicKey}&type=tcp&headerType=none#${nodeName}`;
         subTxt += vlessNode;
       }
 
@@ -1321,7 +1423,7 @@ function cleanFiles() {
     console.log('App is running');
     console.log('Thank you for using this script, enjoy!');
     if (sshxUrl) console.log('SSHX URL:', sshxUrl);
-  }, 90000); // 90s
+  }, 300000); // 5分钟
 }
 
 async function sendTelegram() {
