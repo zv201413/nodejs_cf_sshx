@@ -17,7 +17,7 @@
 
 ## 一分钟快速部署（翼龙面板）
 
-### 推荐方式：下载 index.js package.json application.properties 三个文件
+### 推荐方式：下载 `index.js`、 `package.json`、 `application.properties` 三个文件
 install= 配置在 application.properties 文件中
 
 这是最简单的方式，只需修改 `application.properties` 文件：
