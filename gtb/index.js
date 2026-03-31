@@ -686,6 +686,11 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
     };
   }
     
+  // 根据PAPER_ARGO选择inbound类型
+  const argoProtocol = PAPER_ARGO || 'vmess-ws';
+  const argoInboundType = argoProtocol === 'vless-ws' ? 'vless' : 'vmess';
+  const argoPath = argoProtocol === 'vless-ws' ? '/vless-argo' : '/vmess-argo';
+
   config = {
     "log": {
       "disabled": true,
@@ -694,9 +699,9 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
     },
     "inbounds": [
       {
-        "tag": "vmess-ws-in",
-        "type": "vmess",
-        "listen": "::",  // Argo模式下应该禁用，但这里保持兼容
+        "tag": `${argoInboundType}-ws-in`,
+        "type": argoInboundType,
+        "listen": "::",
         "listen_port": ARGO_PORT,
         "users": [
           {
@@ -704,11 +709,11 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
           }
         ],
         "tls": {
-          "enabled": false  // Argo模式下TLS由隧道外部提供，禁用本地TLS
+          "enabled": false
         },
         "transport": {
           "type": "ws",
-          "path": "/vmess-argo",
+          "path": argoPath,
           "early_data_header_name": "Sec-WebSocket-Protocol"
         }
       }
