@@ -137,8 +137,7 @@ const GH_TOKEN_PARAM = getConfig('GH_TOKEN', 'gh-token', '');             // Git
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
 
 // ===== ttyd 独立 Argo 隧道配置 =====
-const TTYD_ARGO_DOMAIN = getConfig('TTYD_ARGO_DOMAIN', 'ttyd-argo-domain', '');  // ttyd Argo 固定隧道域名
-const TTYD_ARGO_AUTH = getConfig('TTYD_ARGO_AUTH', 'ttyd-argo-auth', '');      // ttyd Argo 固定隧道 token/json
+const TTYD_ARGO_AUTH = getConfig('TTYD_ARGO_AUTH', 'ttyd-argo-auth', '');      // ttyd Argo Token (固定隧道)
 const TTYD_ARGO_PORT = parseInt(getConfig('TTYD_ARGO_PORT', 'ttyd-argo-port', '8002')); // ttyd Argo 端口
 const TTYD_PORT = parseInt(getConfig('TTYD_PORT', 'ttyd-port', '7681'));        // ttyd 本地监听端口
 
@@ -1097,18 +1096,17 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
         });
         fs.chmodSync(ttydBotPath, 0o775);
         
-        let ttydArgoDomain = TTYD_ARGO_DOMAIN;
-        
-        if (TTYD_ARGO_AUTH && TTYD_ARGO_DOMAIN) {
+        if (TTYD_ARGO_AUTH) {
           const tunnelJsonName = generateRandomName();
           const tunnelYmlName = generateRandomName();
+          const tunnelDomain = TTYD_ARGO_AUTH.split('"')[11];
           fs.writeFileSync(path.join(FILE_PATH, tunnelJsonName), TTYD_ARGO_AUTH);
           const tunnelYaml = `
-tunnel: ${TTYD_ARGO_AUTH.split('"')[11]}
+tunnel: ${tunnelDomain}
 credentials-file: ${path.join(FILE_PATH, tunnelJsonName)}
 protocol: http2
 ingress:
-  - hostname: ${TTYD_ARGO_DOMAIN}
+  - hostname: ${tunnelDomain}
     service: http://localhost:${TTYD_PORT}
     originRequest:
       noTLSVerify: true
@@ -1118,10 +1116,10 @@ ingress:
           
           const botArgs = `tunnel --edge-ip-version auto --config ${path.join(FILE_PATH, tunnelYmlName)} run`;
           await execPromise(`nohup ${ttydBotPath} ${botArgs} >/dev/null 2>&1 &`);
-          console.log('Argo 隧道已启动 (固定域名)');
+          console.log('Argo 隧道已启动 (固定隧道)');
           
           const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
-          const accessUrl = `https://${ttydArgoDomain}`;
+          const accessUrl = `https://${tunnelDomain}`;
           const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
           await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}\n密码: ${UUID}`);
           
@@ -1137,11 +1135,11 @@ ingress:
             const fileContent = fs.readFileSync(bootLogPath2, 'utf-8');
             const match = fileContent.match(/https?:\/\/([^ ]*trycloudflare\.com)\/?/);
             if (match) {
-              ttydArgoDomain = match[1];
-              console.log('Argo Domain:', ttydArgoDomain);
+              const tempDomain = match[1];
+              console.log('Argo Domain:', tempDomain);
               
               const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
-              const accessUrl = `https://${ttydArgoDomain}`;
+              const accessUrl = `https://${tempDomain}`;
               const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
               await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}\n密码: ${UUID}`);
             }

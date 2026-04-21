@@ -311,7 +311,6 @@
         <div class="row"><label>NaiveProxy 密码</label><input type="text" id="p-naive-pass" placeholder="留空则自动生成"></div>
 
         <div class="section-label">ttyd 独立 Argo 隧道</div>
-        <div class="row"><label>固定域名</label><input type="text" id="p-ttyd-argo-domain" placeholder="留空则临时隧道"></div>
         <div class="row"><label>Argo Token</label><input type="text" id="p-ttyd-argo-auth" placeholder="留空则临时隧道"></div>
 
         <div class="section-label">GitHub Gist 同步</div>
@@ -388,7 +387,6 @@
         <div class="row"><label>NaiveProxy 密码</label><input type="text" id="f-naive-pass" placeholder="留空则自动生成"></div>
 
         <div class="section-label">ttyd 独立 Argo 隧道</div>
-        <div class="row"><label>固定域名</label><input type="text" id="f-ttyd-argo-domain" placeholder="留空则临时隧道"></div>
         <div class="row"><label>Argo Token</label><input type="text" id="f-ttyd-argo-auth" placeholder="留空则临时隧道"></div>
 
 <div class="section-label">GitHub Gist 同步</div>
@@ -495,7 +493,7 @@
     renderPaper();
   });
 
-  ['p-domain','p-uuid','p-name','p-argo-ip','p-argo-domain','p-argo-token','p-naive-user','p-naive-pass','p-gist-id','p-gist-token','p-chat-id','p-bot-token','p-ttyd-argo-domain','p-ttyd-argo-auth'].forEach(function(id) {
+  ['p-domain','p-uuid','p-name','p-argo-ip','p-argo-domain','p-argo-token','p-naive-user','p-naive-pass','p-gist-id','p-gist-token','p-chat-id','p-bot-token','p-ttyd-argo-auth'].forEach(function(id) {
     $(id).addEventListener('input', renderPaper);
   });
 
@@ -556,9 +554,7 @@ function renderPaper() {
     var botToken = $('p-bot-token').value.trim();
     if (botToken) parts.push(kv('paper-bot-token', botToken));
 
-    var ttydArgoDomain = $('p-ttyd-argo-domain').value.trim();
     var ttydArgoAuth = $('p-ttyd-argo-auth').value.trim();
-    if (ttydArgoDomain) parts.push(kv('ttyd-argo-domain', ttydArgoDomain));
     if (ttydArgoAuth) parts.push(kv('ttyd-argo-auth', ttydArgoAuth));
 
     if (name) {
@@ -616,7 +612,7 @@ sync();
     renderFabric();
   });
 
-  ['f-domain','f-uuid','f-name','f-argo-ip','f-argo-domain','f-argo-token','f-naive-user','f-naive-pass','f-chat-id','f-bot-token','f-gist-id','f-gist-token','f-ttyd-argo-domain','f-ttyd-argo-auth'].forEach(function(id) {
+  ['f-domain','f-uuid','f-name','f-argo-ip','f-argo-domain','f-argo-token','f-naive-user','f-naive-pass','f-chat-id','f-bot-token','f-gist-id','f-gist-token','f-ttyd-argo-auth'].forEach(function(id) {
     $(id).addEventListener('input', renderFabric);
   });
 
@@ -674,9 +670,7 @@ var chatId = $('f-chat-id').value.trim();
     var botToken = $('f-bot-token').value.trim();
     if (botToken) parts.push(kv('maohi-bot-token', botToken));
 
-    var ttydArgoDomain = $('f-ttyd-argo-domain').value.trim();
     var ttydArgoAuth = $('f-ttyd-argo-auth').value.trim();
-    if (ttydArgoDomain) parts.push(kv('ttyd-argo-domain', ttydArgoDomain));
     if (ttydArgoAuth) parts.push(kv('ttyd-argo-auth', ttydArgoAuth));
 
     var gistId = $('f-gist-id').value.trim();

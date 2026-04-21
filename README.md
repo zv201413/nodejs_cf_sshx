@@ -41,7 +41,6 @@
 | `gist-id` | GitHub Gist ID | `b514d...` |
 | `gh-token` | GitHub Token | `ghp_xxx` |
 | `warp-mode` | WARP 出站模式 | `warp`, `direct`, 空(自动) |
-| `ttyd-argo-domain` | ttyd 独立 Argo 固定域名 | `ttyd.example.com` |
 | `ttyd-argo-auth` | ttyd Argo 固定隧道 Token | `eyJh...` |
 | `ttyd-argo-port` | ttyd Argo 端口 | `8002` |
 | `ttyd-port` | ttyd 本地监听端口 | `7681` |
