@@ -1,6 +1,6 @@
 # nodejs-sshx 翼龙面板部署教程
 
-专为**翼龙面板**优化的 Node.js 脚本，一键部署 **sing-box 多协议代理 / ttyd 网页终端**，并自动同步到 GitHub Gist。
+专为**翼龙面板**优化的 Node.js 脚本，一键部署 **sing-box 多协议代理 / ttyd 网页终端 / SSHX 网页终端**，并自动同步到 GitHub Gist。
 
 ---
 
@@ -8,7 +8,7 @@
 
 - ✅ **多协议支持**：Hysteria2、TUIC、Reality、VLESS-WS、VMess-WS
 - ✅ **Argo 隧道**：支持 Cloudflare Argo 临时/固定隧道 (代理和终端独立隧道)
-- ✅ **ttyd 网页终端**：支持通过浏览器访问 SSH
+- ✅ **双网页终端**：ttyd (独立Argo隧道) 和 SSHX (sshx.io直连) 可同时启用
 - ✅ **GitHub Gist 同步**：自动同步链接和节点订阅到 Gist
 - ✅ **WARP 出站**：支持 WARP/直连/自动三种出站模式
 - ✅ **进程混淆**：二进制文件随机命名，日志无敏感词
@@ -37,7 +37,8 @@
 | `paper-domain` | 自定义节点地址 | `162.43.31.93` |
 | `paper-hy2-port` | Hysteria2 端口 | `25565` |
 | `paper-tuic-port` | TUIC 端口 | `25575` |
-| `paper-sshx` | 启用 ttyd 网页终端 | `true`, `false` |
+| `paper-sshx` | 启用 SSHX 网页终端 (sshx.io直连) | `true`, `false` |
+| `paper-ttyd` | 启用 ttyd 网页终端 (独立Argo隧道) | `true`, `false` |
 | `gist-id` | GitHub Gist ID | `b514d...` |
 | `gh-token` | GitHub Token | `ghp_xxx` |
 | `warp-mode` | WARP 出站模式 | `warp`, `direct`, 空(自动) |

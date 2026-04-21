@@ -98,12 +98,20 @@ const UUID = getConfig('UUID', 'UUID', 'c3c87d01-891f-48e3-a91a-6dee38821bbb'); 
 const NEZHA_SERVER = getConfig('NEZHA_SERVER', 'NEZHA_SERVER', '');         // 哪吒面板地址,v1形式：nz.serv00.net:8008  v0形式：nz.serv00.net
 const NEZHA_PORT = getConfig('NEZHA_PORT', 'NEZHA_PORT', '');             // v1哪吒请留空，v0 agent端口
 const NEZHA_KEY = getConfig('NEZHA_KEY', 'NEZHA_KEY', '');               // v1的NZ_CLIENT_SECRET或v0 agwnt密钥 
-const ARGO_DOMAIN = getConfig('ARGO_DOMAIN', 'paper-argo-domain', ''); // argo固定隧道域名,留空即使用临时隧道
+let ARGO_DOMAIN = getConfig('ARGO_DOMAIN', 'paper-argo-domain', ''); // argo固定隧道域名,留空即使用临时隧道
 const ARGO_AUTH = getConfig('ARGO_AUTH', 'paper-argo-token', ''); // argo固定隧道token或json,留空即使用临时隧道
+
+// 如果有 ARGO_AUTH (token) 但没有 ARGO_DOMAIN，尝试从 token 中提取域名
+if (ARGO_AUTH && !ARGO_DOMAIN) {
+  try {
+    const decoded = JSON.parse(Buffer.from(ARGO_AUTH, 'base64').toString());
+    if (decoded.t) ARGO_DOMAIN = `${decoded.t}.cfargotunnel.com`;
+  } catch(e) {}
+}
 const ARGO_PORT = parseInt(getConfig('ARGO_PORT', 'ARGO_PORT', '8001'));             // argo固定隧道端口
 const S5_PORT = getConfig('S5_PORT', 'S5_PORT', '');                   // socks5端口
 const TUIC_PORT = getConfig('TUIC_PORT', 'TUIC_PORT', '');               // tuic端口
-const HY2_PORT = getConfig('HY2_PORT', 'HY2_PORT', '20282');                 // hy2端口
+const HY2_PORT = getConfig('HY2_PORT', 'HY2_PORT', ''); // hy2端口
 const ANYTLS_PORT = getConfig('ANYTLS_PORT', 'ANYTLS_PORT', '');           // AnyTLS端口
 const REALITY_PORT = getConfig('REALITY_PORT', 'REALITY_PORT', '');         // reality端口
 const ANYREALITY_PORT = getConfig('ANYREALITY_PORT', 'ANYREALITY_PORT', '');   // Anyr-eality端口
@@ -114,13 +122,15 @@ const NAME = getConfig('NAME', 'NAME', '');                         // 节点名
 const CHAT_ID = getConfig('CHAT_ID', 'paper-chat-id', ''); // Telegram chat_id
 const BOT_TOKEN = getConfig('BOT_TOKEN', 'paper-bot-token', ''); // Telegram bot_token
 const DISABLE_ARGO = getConfig('DISABLE_ARGO', 'DISABLE_ARGO', 'false');      // 设置为 true 时禁用argo,false开启
-const ENABLE_SSHX = getConfig('ENABLE_SSHX', 'ENABLE_SSHX', 'true');      //  设置为 true 时禁用argo,false开启
+const ENABLE_SSHX = getConfig('ENABLE_SSHX', 'ENABLE_SSHX', 'false'); // 设置为 true 时启用SSHX,false关闭
+const ENABLE_TTYD = getConfig('ENABLE_TTYD', 'ENABLE_TTYD', 'false'); // 设置为 true 时启用ttyd,false关闭
 
 // ===== 新增配置选项 (来自 install= 参数) =====
 const PAPER_NAME = getConfig('PAPER_NAME', 'paper-name', '');                   // 节点名称前缀
 const PAPER_ARGO = getConfig('PAPER_ARGO', 'paper-argo', '');                   // Argo隧道类型: vless-ws, vmess-ws 等
 const PAPER_TUIC_PORT = getConfig('PAPER_TUIC_PORT', 'paper-tuic-port', '');    // TUIC端口
-const PAPER_SSHX = getConfig('PAPER_SSHX', 'paper-sshx', '');                  // SSHX启用: true/false
+const PAPER_SSHX = getConfig('PAPER_SSHX', 'paper-sshx', '') || fileConfig['maohi-sshx'] || ''; // SSHX启用: true/false (Paper/Fabric)
+const PAPER_TTYD = getConfig('PAPER_TTYD', 'paper-ttyd', '') || fileConfig['maohi-ttyd'] || ''; // ttyd启用: true/false (Paper/Fabric)
 const GIST_SSHX_FILE = getConfig('GIST_SSHX_FILE', 'gist-sshx-file', 'sshx.txt');  // Gist sshx文件
 const GIST_SUB_FILE = getConfig('GIST_SUB_FILE', 'gist-sub-file', 'sub.txt');      // Gist sub文件
 const PAPER_HY2_PORT = getConfig('PAPER_HY2_PORT', 'paper-hy2-port', '');       // Hysteria2端口
@@ -168,15 +178,17 @@ console.log(' paper-name:', PAPER_NAME);
 console.log(' paper-argo:', PAPER_ARGO);
 console.log(' ARGO_DOMAIN:', ARGO_DOMAIN || '未设置(临时隧道)');
 console.log(' ARGO_AUTH:', ARGO_AUTH ? '已设置' : '未设置');
-console.log(' actualArgoPort:', actualArgoPort);
+console.log(' ARGO_PORT:', ARGO_PORT);
+console.log(' paper-vless-port:', PAPER_VLESS_PORT || '未设置(使用ARGO_PORT)');
 console.log(' paper-hy2-port:', PAPER_HY2_PORT);
 console.log(' paper-tuic-port:', PAPER_TUIC_PORT);
-console.log(' paper-vless-port:', PAPER_VLESS_PORT);
 console.log(' paper-domain:', PAPER_DOMAIN);
 console.log(' paper-argo-ip:', PAPER_ARGO_IP);
 console.log(' CHAT_ID:', CHAT_ID ? '已设置' : '未设置');
 console.log(' BOT_TOKEN:', BOT_TOKEN ? '已设置' : '未设置');
-console.log(' TTYD_ARGO_AUTH:', TTYD_ARGO_AUTH ? '已设置' : '未设置');
+  console.log(' TTYD_ARGO_AUTH:', TTYD_ARGO_AUTH ? '已设置' : '未设置');
+  console.log(' paper-sshx:', PAPER_SSHX || '未设置');
+  console.log(' paper-ttyd:', PAPER_TTYD || '未设置');
 console.log(' warp-mode:', WARP_MODE || 'auto(默认)');
 console.log(' GIST_ID:', GIST_ID ? '已设置' : '未设置');
 console.log(' GH_TOKEN:', GH_TOKEN ? '已设置' : '未设置');
@@ -268,8 +280,9 @@ function isValidPort(port) {
 }
 
 //清理历史文件
-const pathsToDelete = [ webRandomName, botRandomName, npmRandomName, 'boot.log', 'list.txt'];
+const pathsToDelete = [ webRandomName, botRandomName, npmRandomName, 'boot.log', 'list.txt', 's.txt'];
 function cleanupOldFiles() {
+  try { execSync(`pkill -f "${FILE_PATH}" > /dev/null 2>&1`); } catch(e) {}
   pathsToDelete.forEach(file => {
     const filePath = path.join(FILE_PATH, file);
     fs.unlink(filePath, () => {});
@@ -698,23 +711,26 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
     };
   }
     
-  // 根据PAPER_ARGO选择inbound类型
-  const argoProtocol = PAPER_ARGO || 'vmess-ws';
-  const argoInboundType = argoProtocol === 'vless-ws' ? 'vless' : 'vmess';
-  const argoPath = argoProtocol === 'vless-ws' ? '/vless-argo' : '/vmess-argo';
+// 确定实际使用的端口 (paper- 参数优先)
+const actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
 
-  config = {
-    "log": {
-      "disabled": true,
-      "level": "error",
-      "timestamp": true
-    },
-    "inbounds": [
-      {
-        "tag": `${argoInboundType}-ws-in`,
-        "type": argoInboundType,
-        "listen": "::",
-        "listen_port": actualArgoPort,
+// 根据PAPER_ARGO选择inbound类型
+const argoProtocol = PAPER_ARGO || 'vmess-ws';
+const argoInboundType = argoProtocol === 'vless-ws' ? 'vless' : 'vmess';
+const argoPath = argoProtocol === 'vless-ws' ? '/vless-argo' : '/vmess-argo';
+
+config = {
+"log": {
+"disabled": true,
+"level": "error",
+"timestamp": true
+},
+"inbounds": [
+{
+"tag": `${argoInboundType}-ws-in`,
+"type": argoInboundType,
+"listen": "::",
+"listen_port": actualArgoPort,
         "users": [
           {
             "uuid": UUID
@@ -738,15 +754,14 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
       }
     ],
     "route": routeConfig || { "final": finalOutbound }
-  };
+};
 
 // 确定实际使用的端口 (paper- 参数优先)
-const actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
 const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
-const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : HY2_PORT;
+const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : (isValidPort(HY2_PORT) ? HY2_PORT : '');
 const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_PORT;
 
-    // Reality配置
+// Reality配置
     try {
       if (isValidPort(actualRealityPort)) {
         config.inbounds.push({
@@ -1035,31 +1050,40 @@ const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_POR
       console.error(`web running error: ${error}`);
     }
 
-    // 运行cloud-fared
-    if (DISABLE_ARGO !== 'true' && DISABLE_ARGO !== true) {
-      if (fs.existsSync(path.join(FILE_PATH, botRandomName))) {
-        let args;
+// 运行cloud-fared
+if (DISABLE_ARGO !== 'true' && DISABLE_ARGO !== true) {
+  if (fs.existsSync(path.join(FILE_PATH, botRandomName))) {
+    if (!isValidPort(actualArgoPort)) {
+      console.error('致命错误: Argo端口无效，无法启动隧道! actualArgoPort=', actualArgoPort);
+    } else {
+      let args;
+      const sbLogPath = path.join(FILE_PATH, 'boot.log');
 
-        if (ARGO_AUTH.match(/^[A-Z0-9a-z=]{120,250}$/)) {
-          args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 run --token ${ARGO_AUTH}`;
-        } else if (ARGO_AUTH.match(/TunnelSecret/)) {
-          args = `tunnel --edge-ip-version auto --config ${path.join(FILE_PATH, 'tunnel.yml')} run`;
-        } else {
-          args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${path.join(FILE_PATH, 'boot.log')} --loglevel info --url http://localhost:${actualArgoPort}`;
-        }
+      if (ARGO_AUTH.match(/^[A-Z0-9a-z=]{120,250}$/)) {
+        args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${sbLogPath} --loglevel info run --token ${ARGO_AUTH}`;
+        console.log('⚠️ Token模式: 请确保Cloudflare面板已配置Ingress Rules指向 http://localhost:' + actualArgoPort);
+      } else if (ARGO_AUTH.match(/TunnelSecret/)) {
+        args = `tunnel --edge-ip-version auto --config ${path.join(FILE_PATH, 'tunnel.yml')} run`;
+      } else {
+        args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${sbLogPath} --loglevel info --url http://localhost:${actualArgoPort}`;
+      }
 
-        try {
-          await execPromise(`nohup ${path.join(FILE_PATH, botRandomName)} ${args} >/dev/null 2>&1 &`);
-          console.log('bot is running');
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        } catch (error) {
-          console.error(`Error executing command: ${error}`);
-        }
+      try {
+        await execPromise(`nohup ${path.join(FILE_PATH, botRandomName)} ${args} >${sbLogPath}.out 2>&1 &`);
+        console.log('bot is running, 转发目标: http://localhost:' + actualArgoPort);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error(`Error executing command: ${error}`);
       }
     }
+  }
+}
 
-    const enableTTYD = PAPER_SSHX === 'true' || PAPER_SSHX === 'false' ? 
-      (PAPER_SSHX === 'true') : (ENABLE_SSHX === true || ENABLE_SSHX === 'true');
+const enableTTYD = PAPER_TTYD === 'true' || PAPER_TTYD === 'false' ?
+  (PAPER_TTYD === 'true') : (ENABLE_TTYD === true || ENABLE_TTYD === 'true');
+
+const enableSSHX = PAPER_SSHX === 'true' || PAPER_SSHX === 'false' ?
+  (PAPER_SSHX === 'true') : (ENABLE_SSHX === true || ENABLE_SSHX === 'true');
     
     if (enableTTYD) {
       const ttydRandomName = generateRandomName();
@@ -1087,9 +1111,10 @@ const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_POR
         });
         fs.chmodSync(ttydPath, 0o775);
         
-        const ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -P "${UUID}" bash >/dev/null 2>&1 &`;
-        await execPromise(ttydCommand);
-        console.log(`组件A已启动`);
+const ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -P "${UUID}" bash >/dev/null 2>&1 &`;
+await execPromise(ttydCommand);
+console.log(`组件A已启动`);
+await new Promise(resolve => setTimeout(resolve, 2000));
         
         console.log(`下载组件B...`);
         const botUrl = architecture === 'arm' ? 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64' : 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64';
@@ -1104,38 +1129,35 @@ const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_POR
         });
         fs.chmodSync(ttydBotPath, 0o775);
         
-        if (TTYD_ARGO_AUTH) {
-          const tunnelJsonName = generateRandomName();
-          const tunnelYmlName = generateRandomName();
-          const tunnelDomain = TTYD_ARGO_AUTH.split('"')[11];
-          fs.writeFileSync(path.join(FILE_PATH, tunnelJsonName), TTYD_ARGO_AUTH);
-          const tunnelYaml = `
-tunnel: ${tunnelDomain}
-credentials-file: ${path.join(FILE_PATH, tunnelJsonName)}
-protocol: http2
-ingress:
-  - hostname: ${tunnelDomain}
-    service: http://localhost:${TTYD_PORT}
-    originRequest:
-      noTLSVerify: true
-  - service: http_status:404
-`;
-          fs.writeFileSync(path.join(FILE_PATH, tunnelYmlName), tunnelYaml);
-          
-          const botArgs = `tunnel --edge-ip-version auto --config ${path.join(FILE_PATH, tunnelYmlName)} run`;
-          await execPromise(`nohup ${ttydBotPath} ${botArgs} >/dev/null 2>&1 &`);
-          console.log('Argo 隧道已启动 (固定隧道)');
-          
-          const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
-          const accessUrl = `https://${tunnelDomain}`;
-          const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
-          await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}\n密码: ${UUID}`);
-          
-        } else {
-          const bootLogPath2 = path.join(FILE_PATH, ttydLogName);
-          const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${bootLogPath2} --loglevel info --url http://localhost:${TTYD_PORT}`;
-          await execPromise(`nohup ${ttydBotPath} ${botArgs} >/dev/null 2>&1 &`);
-          console.log('Argo 隧道正在启动 (临时域名)...');
+  if (TTYD_ARGO_AUTH) {
+    if (!isValidPort(TTYD_PORT)) {
+      console.error('致命错误: 组件A端口无效，无法启动隧道! TTYD_PORT=', TTYD_PORT);
+    } else {
+      const ttydArgoLogPath = path.join(FILE_PATH, ttydLogName);
+      const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${ttydArgoLogPath} --loglevel info run --token ${TTYD_ARGO_AUTH}`;
+      await execPromise(`nohup ${ttydBotPath} ${botArgs} >${ttydArgoLogPath}.out 2>&1 &`);
+      console.log('Argo 隧道已启动 (固定隧道), 转发目标: http://localhost:' + TTYD_PORT);
+      console.log('⚠️ Token模式: 请确保Cloudflare面板已配置Ingress Rules指向 http://localhost:' + TTYD_PORT);
+
+      let tunnelDomain;
+      try {
+        const decoded = JSON.parse(Buffer.from(TTYD_ARGO_AUTH, 'base64').toString());
+        tunnelDomain = decoded.t ? `${decoded.t}.cfargotunnel.com` : undefined;
+      } catch(e) {
+        try { tunnelDomain = TTYD_ARGO_AUTH.split('"')[11]; } catch(e2) {}
+      }
+      if (tunnelDomain) {
+        const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
+        const accessUrl = `https://${tunnelDomain}`;
+        const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
+        await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}\n密码: ${UUID}`);
+      }
+    }
+  } else {
+    const bootLogPath2 = path.join(FILE_PATH, ttydLogName);
+    const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${bootLogPath2} --loglevel info --url http://localhost:${TTYD_PORT}`;
+    await execPromise(`nohup ${ttydBotPath} ${botArgs} >${bootLogPath2}.out 2>&1 &`);
+    console.log('Argo 隧道正在启动 (临时域名), 转发目标: http://localhost:' + TTYD_PORT);
           
           await new Promise(resolve => setTimeout(resolve, 6000));
           
@@ -1154,10 +1176,46 @@ ingress:
           }
         }
         
-      } catch (error) {
-        console.error(`ttyd 启动错误: ${error}`);
+} catch (error) {
+  console.error(`ttyd 启动错误: ${error}`);
+}
+}
+
+if (enableSSHX) {
+  const sshxInfoFile = path.join(FILE_PATH, 's.txt');
+
+  if (fs.existsSync(sshxInfoFile)) {
+    fs.unlinkSync(sshxInfoFile);
+  }
+
+  const sshxCommand = `curl -sSf https://sshx.io/get | sh -s run`;
+
+  try {
+    await execPromise(`nohup bash -c "${sshxCommand}" > "${sshxInfoFile}" 2>&1 &`);
+    console.log('SSHX 正在启动...');
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    if (fs.existsSync(sshxInfoFile)) {
+      const content = fs.readFileSync(sshxInfoFile, 'utf-8');
+      const match = content.match(/https:\/\/sshx\.io\/s\/[a-zA-Z0-9]+#[a-zA-Z0-9]+/);
+      if (match) {
+        sshxUrl = match[0];
+        console.log('SSHX URL:', sshxUrl);
+
+        const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
+        const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
+        await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${sshxUrl}`);
+        setTimeout(() => {
+          if (fs.existsSync(sshxInfoFile)) {
+            try { fs.unlinkSync(sshxInfoFile); } catch (e) {}
+          }
+        }, 300000);
       }
     }
+  } catch (error) {
+    console.error(`SSHX 启动错误: ${error}`);
+  }
+}
 
     // 无论是否禁用 Argo，都需要生成节点信息
     await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -1266,7 +1324,37 @@ async function extractDomains() {
     argoDomain = ARGO_DOMAIN;
     console.log('ARGO_DOMAIN:', argoDomain);
     await generateLinks(argoDomain);
+  } else if (ARGO_AUTH && !ARGO_DOMAIN) {
+    // token 模式下 ARGO_DOMAIN 提取失败，尝试重新从 token 解码
+    try {
+      const decoded = JSON.parse(Buffer.from(ARGO_AUTH, 'base64').toString());
+      if (decoded.t) {
+        argoDomain = `${decoded.t}.cfargotunnel.com`;
+        console.log('ARGO_DOMAIN (from token):', argoDomain);
+        await generateLinks(argoDomain);
+      } else {
+        console.error('Token 解码成功但未找到隧道ID');
+        await generateLinks(null);
+      }
+    } catch (e) {
+      // 不是 base64 token，可能是 JSON 凭证格式
+      try {
+        const parsed = JSON.parse(ARGO_AUTH);
+        if (parsed.TunnelID) {
+          argoDomain = `${parsed.TunnelID}.cfargotunnel.com`;
+          console.log('ARGO_DOMAIN (from JSON):', argoDomain);
+          await generateLinks(argoDomain);
+        } else {
+          console.error('JSON 凭证中未找到 TunnelID');
+          await generateLinks(null);
+        }
+      } catch (e2) {
+        console.error('无法从 ARGO_AUTH 提取域名:', e2.message);
+        await generateLinks(null);
+      }
+    }
   } else {
+    // 临时隧道模式，从 boot.log 提取域名
     try {
       const fileContent = fs.readFileSync(path.join(FILE_PATH, 'boot.log'), 'utf-8');
       const lines = fileContent.split('\n');
@@ -1285,29 +1373,29 @@ async function extractDomains() {
         await generateLinks(argoDomain);
       } else {
         console.log('ArgoDomain not found, re-running bot to obtain ArgoDomain');
-          // 删除 boot.log 文件，等待 2s 重新运行 server 以获取 ArgoDomain
-          fs.unlinkSync(path.join(FILE_PATH, 'boot.log'));
-          async function killBotProcess() {
-            try {
-              await exec(`pkill -f "${botRandomName}" > /dev/null 2>&1`);
-            } catch (error) {
-                return null;
-              // 忽略输出
-            }
-          }
-          killBotProcess();
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          const args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${FILE_PATH}/boot.log --loglevel info --url http://localhost:${actualArgoPort}`;
+        // 删除 boot.log 文件，等待 2s 重新运行 server 以获取 ArgoDomain
+        fs.unlinkSync(path.join(FILE_PATH, 'boot.log'));
+        async function killBotProcess() {
           try {
-            await exec(`nohup ${path.join(FILE_PATH, botRandomName)} ${args} >/dev/null 2>&1 &`);
-            console.log('bot is running.');
-            await new Promise((resolve) => setTimeout(resolve, 6000)); // 等待6秒
-            await extractDomains(); // 重新提取域名
+            await exec(`pkill -f "${botRandomName}" > /dev/null 2>&1`);
           } catch (error) {
-            console.error(`Error executing command: ${error}`);
+            return null;
+            // 忽略输出
           }
         }
-      } catch (error) {
+        killBotProcess();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${FILE_PATH}/boot.log --loglevel info --url http://localhost:${actualArgoPort}`;
+        try {
+          await exec(`nohup ${path.join(FILE_PATH, botRandomName)} ${args} >${FILE_PATH}/boot.log.out 2>&1 &`);
+          console.log('bot is running.');
+          await new Promise((resolve) => setTimeout(resolve, 6000)); // 等待6秒
+          await extractDomains(); // 重新提取域名
+        } catch (error) {
+          console.error(`Error executing command: ${error}`);
+        }
+      }
+    } catch (error) {
       console.error('Error reading boot.log:', error);
     }
   }
@@ -1470,26 +1558,17 @@ console.log(' 实际TUIC端口:', actualTUICPort);
   });
 }
   
-// 90s分钟后删除所有临时文件
+// 90s分钟后删除临时文件（保留二进制文件以支持崩溃重启）
 function cleanFiles() {
   setTimeout(() => {
     console.log('正在清理临时文件...');
-    
-    // 删除所有二进制文件
-    const binaryFiles = [webPath, botPath, phpPath, npmPath];
-    binaryFiles.forEach(file => {
-      if (fs.existsSync(file)) {
-        try { fs.unlinkSync(file); } catch (e) {}
-      }
-    });
-    
-    // 删除配置文件
+
     [bootLogPath, configPath, listPath, subPath].forEach(file => {
       if (fs.existsSync(file)) {
         try { fs.unlinkSync(file); } catch (e) {}
       }
     });
-    
+
     console.clear();
     console.log('App is running');
     console.log('Thank you for using this script, enjoy!');

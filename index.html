@@ -276,11 +276,12 @@
           <div class="proto-item" id="item-hypt"><label><input type="checkbox" id="cb-hypt"> Hysteria2</label><input type="text" class="port-input" id="pt-hypt" placeholder="25565" value="25565"></div>
           <div class="proto-item" id="item-tupt"><label><input type="checkbox" id="cb-tupt"> Tuic</label><input type="text" class="port-input" id="pt-tupt" placeholder="25570" value="25570"></div>
         </div>
-        <div class="section-label">网页终端</div>
-        <div class="proto-grid">
-<div class="proto-item" id="item-sshx"><label><input type="checkbox" id="cb-sshx"> ttyd</label><span style="font-size:11px;color:var(--sub)">网页终端</span></div>
-        </div>
-      </section>
+<div class="section-label">网页终端</div>
+<div class="proto-grid">
+<div class="proto-item" id="item-ttyd"><label><input type="checkbox" id="cb-ttyd"> ttyd</label><span style="font-size:11px;color:var(--sub)">独立Argo隧道</span></div>
+<div class="proto-item" id="item-sshx"><label><input type="checkbox" id="cb-sshx"> SSHX</label><span style="font-size:11px;color:var(--sub)">sshx.io直连</span></div>
+</div>
+</section>
 
       <section class="card">
         <h2>基础配置</h2>
@@ -310,10 +311,12 @@
         <div class="row"><label>NaiveProxy 用户</label><input type="text" id="p-naive-user" value="admin"></div>
         <div class="row"><label>NaiveProxy 密码</label><input type="text" id="p-naive-pass" placeholder="留空则自动生成"></div>
 
-        <div class="section-label">ttyd 独立 Argo 隧道</div>
-        <div class="row"><label>Argo Token</label><input type="text" id="p-ttyd-argo-auth" placeholder="留空则临时隧道"></div>
+  <div id="p-ttyd-argo-section" style="display:none">
+  <div class="section-label">ttyd 独立 Argo 隧道</div>
+  <div class="row"><label>Argo Token</label><input type="text" id="p-ttyd-argo-auth" placeholder="留空则临时隧道"></div>
+  </div>
 
-        <div class="section-label">GitHub Gist 同步</div>
+  <div class="section-label">GitHub Gist 同步</div>
         <div class="gist-row" id="p-gist-row"><label>Gist ID <span class="pill">gist-id</span></label><input type="text" id="p-gist-id" placeholder="留空则不启用"></div>
         <div class="gist-row show" id="p-gist-row2"><label>GitHub Token <span class="pill">gh-token</span></label><input type="text" id="p-gist-token" placeholder="留空则不启用"></div>
 
@@ -354,7 +357,8 @@
 </div>
 <div class="section-label">网页终端</div>
 <div class="proto-grid">
-<div class="proto-item" id="fb-item-sshx"><label><input type="checkbox" id="fb-cb-sshx"> ttyd</label><span style="font-size:11px;color:var(--sub)">网页终端</span></div>
+<div class="proto-item" id="fb-item-ttyd"><label><input type="checkbox" id="fb-cb-ttyd"> ttyd</label><span style="font-size:11px;color:var(--sub)">独立Argo隧道</span></div>
+<div class="proto-item" id="fb-item-sshx"><label><input type="checkbox" id="fb-cb-sshx"> SSHX</label><span style="font-size:11px;color:var(--sub)">sshx.io直连</span></div>
 </div>
 </section>
 
@@ -386,10 +390,12 @@
         <div class="row"><label>NaiveProxy 用户</label><input type="text" id="f-naive-user" value="admin"></div>
         <div class="row"><label>NaiveProxy 密码</label><input type="text" id="f-naive-pass" placeholder="留空则自动生成"></div>
 
-        <div class="section-label">ttyd 独立 Argo 隧道</div>
-        <div class="row"><label>Argo Token</label><input type="text" id="f-ttyd-argo-auth" placeholder="留空则临时隧道"></div>
+  <div id="f-ttyd-argo-section" style="display:none">
+  <div class="section-label">ttyd 独立 Argo 隧道</div>
+  <div class="row"><label>Argo Token</label><input type="text" id="f-ttyd-argo-auth" placeholder="留空则临时隧道"></div>
+  </div>
 
-<div class="section-label">GitHub Gist 同步</div>
+  <div class="section-label">GitHub Gist 同步</div>
         <div class="gist-row" id="f-gist-row"><label>Gist ID</label><input type="text" id="f-gist-id" placeholder="留空则不启用"></div>
         <div class="gist-row show" id="f-gist-row2"><label>GitHub Token</label><input type="text" id="f-gist-token" placeholder="留空则不启用"></div>
 
@@ -468,8 +474,9 @@
     {cb:'cb-naive',pt:'pt-naive',item:'item-naive'},
     {cb:'cb-s5',pt:'pt-s5',item:'item-s5'},
     {cb:'cb-hypt', pt:'pt-hypt', item:'item-hypt' },
-    {cb:'cb-tupt', pt:'pt-tupt', item:'item-tupt' },
-    {cb:'cb-sshx', pt:null,     item:'item-sshx' },
+{cb:'cb-tupt', pt:'pt-tupt', item:'item-tupt' },
+{cb:'cb-ttyd', pt:null, item:'item-ttyd' },
+{cb:'cb-sshx', pt:null, item:'item-sshx' },
   ];
 
   paperProtos.forEach(function(p) {
@@ -498,7 +505,8 @@
   });
 
 function renderPaper() {
-    var parts = [];
+  $('p-ttyd-argo-section').style.display = $('cb-ttyd').checked ? '' : 'none';
+  var parts = [];
     var domain = $('p-domain').value.trim();
     if (domain) parts.push(kv('paper-domain', domain));
     var uuid = $('p-uuid').value.trim();
@@ -532,9 +540,11 @@ function renderPaper() {
             : key === 'anpt' ? 'paper-anytls-port'
             : key === 'tupt' ? 'paper-tuic-port'
             : key;
-        if (key === 'sshx') {
-            parts.push(kv('paper-sshx', 'true'));
-        } else if (port) {
+if (key === 'sshx') {
+  parts.push(kv('paper-sshx', 'true'));
+} else if (key === 'ttyd') {
+  parts.push(kv('paper-ttyd', 'true'));
+} else if (port) {
             parts.push(kv(paperKey, port));
         }
     });
@@ -588,6 +598,7 @@ var fbProtos = [
 {cb:'fb-cb-s5', pt:'fb-pt-s5', item:'fb-item-s5'},
 {cb:'fb-cb-hypt', pt:'fb-pt-hypt', item:'fb-item-hypt'},
 {cb:'fb-cb-tupt', pt:'fb-pt-tupt', item:'fb-item-tupt'},
+{cb:'fb-cb-ttyd', pt:null, item:'fb-item-ttyd'},
 {cb:'fb-cb-sshx', pt:null, item:'fb-item-sshx'},
 ];
 
@@ -616,8 +627,9 @@ sync();
     $(id).addEventListener('input', renderFabric);
   });
 
-  function renderFabric() {
-    var parts = [];
+function renderFabric() {
+  $('f-ttyd-argo-section').style.display = $('fb-cb-ttyd').checked ? '' : 'none';
+  var parts = [];
     var domain = $('f-domain').value.trim();
     if (domain) parts.push(kv('domain', domain));
     var uuid = $('f-uuid').value.trim();
@@ -653,11 +665,13 @@ var maohiKey = key === 's5' ? 'maohi-s5-port'
 : key === 'anpt' ? 'maohi-anytls-port'
 : key === 'tupt' ? 'maohi-tuic-port'
 : key;
-if (key === 'sshx') {
-parts.push(kv('maohi-sshx', 'true'));
-} else {
-parts.push(kv(maohiKey, port));
-}
+        if (key === 'sshx') {
+            parts.push(kv('maohi-sshx', 'true'));
+        } else if (key === 'ttyd') {
+            parts.push(kv('maohi-ttyd', 'true'));
+        } else {
+            parts.push(kv(maohiKey, port));
+        }
 });
 
 var naiveUser = $('f-naive-user').value.trim();
