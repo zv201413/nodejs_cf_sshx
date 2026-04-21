@@ -1060,8 +1060,8 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
       
       const architecture = getSystemArchitecture();
       const ttydUrl = architecture === 'arm' 
-        ? 'https://github.com/tsl0922/ttyd/releases/download/1.10.0/ttyd-aarch64'
-        : 'https://github.com/tsl0922/ttyd/releases/download/1.10.0/ttyd-x86_64';
+        ? 'https://github.com/tsl0922/ttyd/releases/download/1.10.6/ttyd-aarch64'
+        : 'https://github.com/tsl0922/ttyd/releases/download/1.10.6/ttyd-x86_64';
       
       const ttydPath = path.join(FILE_PATH, ttydRandomName);
       const ttydBotPath = path.join(FILE_PATH, ttydBotRandomName);
