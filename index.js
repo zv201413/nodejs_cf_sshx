@@ -136,6 +136,12 @@ const GH_TOKEN_PARAM = getConfig('GH_TOKEN', 'gh-token', '');             // Git
 // ===== WARP/直连出站配置 =====
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
 
+// ===== ttyd 独立 Argo 隧道配置 =====
+const TTYD_ARGO_DOMAIN = getConfig('TTYD_ARGO_DOMAIN', 'ttyd-argo-domain', '');  // ttyd Argo 固定隧道域名
+const TTYD_ARGO_AUTH = getConfig('TTYD_ARGO_AUTH', 'ttyd-argo-auth', '');      // ttyd Argo 固定隧道 token/json
+const TTYD_ARGO_PORT = parseInt(getConfig('TTYD_ARGO_PORT', 'ttyd-argo-port', '8002')); // ttyd Argo 端口
+const TTYD_PORT = parseInt(getConfig('TTYD_PORT', 'ttyd-port', '7681'));        // ttyd 本地监听端口
+
 // 读取 config.json 配置文件（Gist 凭证专用）
 let GIST_ID = process.env.GIST_ID || '';
 let GH_TOKEN = process.env.GH_TOKEN || '';
@@ -1045,50 +1051,103 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
       }
     }
 
-    // 运行 SSHX 网页终端 (支持 paper-sshx 参数)
-    const enableSSHX = PAPER_SSHX === 'true' || PAPER_SSHX === 'false' ? 
+    // 运行 ttyd 网页终端 (替换SSHX) + 独立 Argo 隧道
+    const enableTTYD = PAPER_SSHX === 'true' || PAPER_SSHX === 'false' ? 
       (PAPER_SSHX === 'true') : (ENABLE_SSHX === true || ENABLE_SSHX === 'true');
     
-    if (enableSSHX) {
-      const sshxInfoFile = path.join(FILE_PATH, 's.txt');
+    if (enableTTYD) {
+      const ttydFileName = 'ttyd';
+      const ttydBotFileName = 'ttyd-bot';
       
-      // 删除旧的 s.txt，确保每次都生成新链接
-      if (fs.existsSync(sshxInfoFile)) {
-        fs.unlinkSync(sshxInfoFile);
-      }
+      const architecture = getSystemArchitecture();
+      const ttydUrl = architecture === 'arm' 
+        ? 'https://github.com/tsl0922/ttyd/releases/download/1.10.0/ttyd-aarch64'
+        : 'https://github.com/tsl0922/ttyd/releases/download/1.10.0/ttyd-x86_64';
       
-      // 启动新的 SSHX
-      const sshxCommand = `curl -sSf https://sshx.io/get | sh -s run`;
+      const ttydPath = path.join(FILE_PATH, ttydFileName);
+      const ttydBotPath = path.join(FILE_PATH, ttydBotFileName);
       
       try {
-        await execPromise(`nohup bash -c "${sshxCommand}" > "${sshxInfoFile}" 2>&1 &`);
-        console.log('SSHX 正在启动...');
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        console.log(`下载 ttyd from ${ttydUrl}...`);
+        await new Promise((resolve, reject) => {
+          axios({ method: 'get', url: ttydUrl, responseType: 'stream' })
+            .then(response => {
+              const writer = fs.createWriteStream(ttydPath);
+              response.data.pipe(writer);
+              writer.on('finish', () => { writer.close(); console.log('ttyd 下载完成'); resolve(); });
+              writer.on('error', err => { console.error('ttyd 下载失败:', err.message); reject(err); });
+            }).catch(err => { console.error('ttyd 下载失败:', err.message); reject(err); });
+        });
+        fs.chmodSync(ttydPath, 0o775);
         
-        if (fs.existsSync(sshxInfoFile)) {
-          const content = fs.readFileSync(sshxInfoFile, 'utf-8');
-          const match = content.match(/https:\/\/sshx\.io\/s\/[a-zA-Z0-9]+#[a-zA-Z0-9]+/);
-          if (match) {
-            sshxUrl = match[0];
-            console.log('SSHX URL:', sshxUrl);
-            
-            const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
-            // 使用 GIST_SSHX_FILE 参数指定文件名
-            const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
-            await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${sshxUrl}`);
-            // 5分钟后删除s.txt (而不是立即删除)
-            setTimeout(() => {
-              if (fs.existsSync(sshxInfoFile)) {
-                try {
-                  fs.unlinkSync(sshxInfoFile);
-                  console.log('s.txt 已在5分钟后删除');
-                } catch (e) {}
-              }
-            }, 300000); // 5分钟
+        const ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -P "${UUID}" bash >/dev/null 2>&1 &`;
+        await execPromise(ttydCommand);
+        console.log(`ttyd 已在端口 ${TTYD_PORT} 启动`);
+        
+        console.log(`下载 ttyd cloudflared...`);
+        const botUrl = architecture === 'arm' ? 'https://arm64.ssss.nyc.mn/bot' : 'https://amd64.ssss.nyc.mn/bot';
+        await new Promise((resolve, reject) => {
+          axios({ method: 'get', url: botUrl, responseType: 'stream' })
+            .then(response => {
+              const writer = fs.createWriteStream(ttydBotPath);
+              response.data.pipe(writer);
+              writer.on('finish', () => { writer.close(); console.log('ttyd-bot 下载完成'); resolve(); });
+              writer.on('error', err => { console.error('ttyd-bot 下载失败:', err.message); reject(err); });
+            }).catch(err => { console.error('ttyd-bot 下载失败:', err.message); reject(err); });
+        });
+        fs.chmodSync(ttydBotPath, 0o775);
+        
+        let ttydArgoDomain = TTYD_ARGO_DOMAIN;
+        
+        if (TTYD_ARGO_AUTH && TTYD_ARGO_DOMAIN) {
+          fs.writeFileSync(path.join(FILE_PATH, 'ttyd-tunnel.json'), TTYD_ARGO_AUTH);
+          const tunnelYaml = `
+tunnel: ${TTYD_ARGO_AUTH.split('"')[11]}
+credentials-file: ${path.join(FILE_PATH, 'ttyd-tunnel.json')}
+protocol: http2
+ingress:
+  - hostname: ${TTYD_ARGO_DOMAIN}
+    service: http://localhost:${TTYD_PORT}
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404
+`;
+          fs.writeFileSync(path.join(FILE_PATH, 'ttyd-tunnel.yml'), tunnelYaml);
+          
+          const botArgs = `tunnel --edge-ip-version auto --config ${path.join(FILE_PATH, 'ttyd-tunnel.yml')} run`;
+          await execPromise(`nohup ${ttydBotPath} ${botArgs} >/dev/null 2>&1 &`);
+          console.log('ttyd Argo 隧道已启动 (固定域名)');
+          
+          const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
+          const ttydUrl = `https://${ttydArgoDomain}`;
+          const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
+          await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${ttydUrl}\n密码: ${UUID}`);
+          
+        } else {
+          const bootLogPath2 = path.join(FILE_PATH, 'ttyd-boot.log');
+          const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${bootLogPath2} --loglevel info --url http://localhost:${TTYD_PORT}`;
+          await execPromise(`nohup ${ttydBotPath} ${botArgs} >/dev/null 2>&1 &`);
+          console.log('ttyd Argo 隧道正在启动 (临时域名)...');
+          
+          await new Promise(resolve => setTimeout(resolve, 6000));
+          
+          if (fs.existsSync(bootLogPath2)) {
+            const fileContent = fs.readFileSync(bootLogPath2, 'utf-8');
+            const match = fileContent.match(/https?:\/\/([^ ]*trycloudflare\.com)\/?/);
+            if (match) {
+              ttydArgoDomain = match[1];
+              console.log('ttyd Argo Domain:', ttydArgoDomain);
+              
+              const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
+              const ttydUrl = `https://${ttydArgoDomain}`;
+              const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
+              await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${ttydUrl}\n密码: ${UUID}`);
+            }
           }
         }
+        
       } catch (error) {
-        console.error(`SSHX 启动错误: ${error}`);
+        console.error(`ttyd 启动错误: ${error}`);
       }
     }
 

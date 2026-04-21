@@ -4,7 +4,7 @@
 
 ---
 
-## 功能特性
+## 核心特色
 
 - ✅ **多协议支持**：Hysteria2、TUIC、Reality、VLESS-WS、VMess-WS
 - ✅ **Argo 隧道**：支持 Cloudflare Argo 临时/固定隧道
@@ -33,30 +33,24 @@
 | `paper-name` | 节点名称前缀（会自动添加国家代码） | `JP`, `US` |
 | `paper-argo` | Argo 协议类型 | `vless-ws`, `vmess-ws` |
 | `paper-argo-ip` | Argo 优选 IP | `104.17.100.191` |
-| `paper-domain` | 自定义节点地址（HY2/TUIC/Reality 使用） | `162.43.31.93` |
+| `paper-domain` | 自定义节点地址 | `162.43.31.93` |
 | `paper-hy2-port` | Hysteria2 端口 | `25565` |
 | `paper-tuic-port` | TUIC 端口 | `25575` |
-| `paper-sshx` | 启用 SSHX | `true`, `false` |
+| `paper-sshx` | 启用 ttyd 网页终端 | `true`, `false` |
 | `gist-id` | GitHub Gist ID | `b514d...` |
 | `gh-token` | GitHub Token | `ghp_xxx` |
-| `gist-sshx-file` | Gist SSHX 文件名 | `sshx.txt` |
-| `gist-sub-file` | Gist 订阅文件名 | `sub.txt` |
 | `warp-mode` | WARP 出站模式 | `warp`, `direct`, 空(自动) |
-
-### WARP 出站模式
-
-| 模式 | 说明 |
-|------|------|
-| `warp` | 强制所有流量通过 WARP 出站 |
-| `direct` | 直连模式，不使用 WARP |
-| 空(默认) | 自动模式：Netflix/OpenAI/YouTube 走 WARP，其他直连 |
+| `ttyd-argo-domain` | ttyd 独立 Argo 固定域名 | `ttyd.example.com` |
+| `ttyd-argo-auth` | ttyd Argo 固定隧道 Token | `eyJh...` |
+| `ttyd-argo-port` | ttyd Argo 端口 | `8002` |
+| `ttyd-port` | ttyd 本地监听端口 | `7681` |
 
 ---
 
 ## 常见问题
 
 **Q: 节点名称如何自动添加国家代码？**
-A: 程序会自动调用 IP API 获取国家代码和 ISP 信息，格式为：`paper-name-国家代码-ISP`
+A: 程序会自动调用 IP API 获取国家代码和 ISP 信息
 
 **Q: Gist 同步失败？**
 A: 检查 `gist-id` 和 `gh-token` 是否正确
