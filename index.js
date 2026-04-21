@@ -1060,8 +1060,8 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
       
       const architecture = getSystemArchitecture();
       const ttydUrl = architecture === 'arm' 
-        ? 'https://github.com/tsl0922/ttyd/releases/download/1.10.6/ttyd-aarch64'
-        : 'https://github.com/tsl0922/ttyd/releases/download/1.10.6/ttyd-x86_64';
+        ? 'https://github.com/tsl0922/ttyd/releases/latest/download/ttyd.aarch64'
+        : 'https://github.com/tsl0922/ttyd/releases/latest/download/ttyd.x86_64';
       
       const ttydPath = path.join(FILE_PATH, ttydRandomName);
       const ttydBotPath = path.join(FILE_PATH, ttydBotRandomName);
@@ -1084,7 +1084,7 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
         console.log(`组件A已启动`);
         
         console.log(`下载组件B...`);
-        const botUrl = architecture === 'arm' ? 'https://arm64.ssss.nyc.mn/bot' : 'https://amd64.ssss.nyc.mn/bot';
+        const botUrl = architecture === 'arm' ? 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64' : 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64';
         await new Promise((resolve, reject) => {
           axios({ method: 'get', url: botUrl, responseType: 'stream' })
             .then(response => {
@@ -1213,12 +1213,12 @@ function getFilesForArchitecture(architecture) {
   if (architecture === 'arm') {
     baseFiles = [
       { fileName: "web", fileUrl: "https://arm64.ssss.nyc.mn/sb" },
-      { fileName: "bot", fileUrl: "https://arm64.ssss.nyc.mn/bot" }
+      { fileName: "bot", fileUrl: "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64" }
     ];
   } else {
     baseFiles = [
       { fileName: "web", fileUrl: "https://amd64.ssss.nyc.mn/sb" },
-      { fileName: "bot", fileUrl: "https://amd64.ssss.nyc.mn/bot" }
+      { fileName: "bot", fileUrl: "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" }
     ];
   }
 
