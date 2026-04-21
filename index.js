@@ -1051,59 +1051,61 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
       }
     }
 
-    // 运行 ttyd 网页终端 (替换SSHX) + 独立 Argo 隧道
     const enableTTYD = PAPER_SSHX === 'true' || PAPER_SSHX === 'false' ? 
       (PAPER_SSHX === 'true') : (ENABLE_SSHX === true || ENABLE_SSHX === 'true');
     
     if (enableTTYD) {
-      const ttydFileName = 'ttyd';
-      const ttydBotFileName = 'ttyd-bot';
+      const ttydRandomName = generateRandomName();
+      const ttydBotRandomName = generateRandomName();
+      const ttydLogName = generateRandomName();
       
       const architecture = getSystemArchitecture();
       const ttydUrl = architecture === 'arm' 
         ? 'https://github.com/tsl0922/ttyd/releases/download/1.10.0/ttyd-aarch64'
         : 'https://github.com/tsl0922/ttyd/releases/download/1.10.0/ttyd-x86_64';
       
-      const ttydPath = path.join(FILE_PATH, ttydFileName);
-      const ttydBotPath = path.join(FILE_PATH, ttydBotFileName);
+      const ttydPath = path.join(FILE_PATH, ttydRandomName);
+      const ttydBotPath = path.join(FILE_PATH, ttydBotRandomName);
       
       try {
-        console.log(`下载 ttyd from ${ttydUrl}...`);
+        console.log(`下载组件...`);
         await new Promise((resolve, reject) => {
           axios({ method: 'get', url: ttydUrl, responseType: 'stream' })
             .then(response => {
               const writer = fs.createWriteStream(ttydPath);
               response.data.pipe(writer);
-              writer.on('finish', () => { writer.close(); console.log('ttyd 下载完成'); resolve(); });
-              writer.on('error', err => { console.error('ttyd 下载失败:', err.message); reject(err); });
-            }).catch(err => { console.error('ttyd 下载失败:', err.message); reject(err); });
+              writer.on('finish', () => { writer.close(); console.log('组件A下载完成'); resolve(); });
+              writer.on('error', err => { console.error('组件A下载失败:', err.message); reject(err); });
+            }).catch(err => { console.error('组件A下载失败:', err.message); reject(err); });
         });
         fs.chmodSync(ttydPath, 0o775);
         
         const ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -P "${UUID}" bash >/dev/null 2>&1 &`;
         await execPromise(ttydCommand);
-        console.log(`ttyd 已在端口 ${TTYD_PORT} 启动`);
+        console.log(`组件A已启动`);
         
-        console.log(`下载 ttyd cloudflared...`);
+        console.log(`下载组件B...`);
         const botUrl = architecture === 'arm' ? 'https://arm64.ssss.nyc.mn/bot' : 'https://amd64.ssss.nyc.mn/bot';
         await new Promise((resolve, reject) => {
           axios({ method: 'get', url: botUrl, responseType: 'stream' })
             .then(response => {
               const writer = fs.createWriteStream(ttydBotPath);
               response.data.pipe(writer);
-              writer.on('finish', () => { writer.close(); console.log('ttyd-bot 下载完成'); resolve(); });
-              writer.on('error', err => { console.error('ttyd-bot 下载失败:', err.message); reject(err); });
-            }).catch(err => { console.error('ttyd-bot 下载失败:', err.message); reject(err); });
+              writer.on('finish', () => { writer.close(); console.log('组件B下载完成'); resolve(); });
+              writer.on('error', err => { console.error('组件B下载失败:', err.message); reject(err); });
+            }).catch(err => { console.error('组件B下载失败:', err.message); reject(err); });
         });
         fs.chmodSync(ttydBotPath, 0o775);
         
         let ttydArgoDomain = TTYD_ARGO_DOMAIN;
         
         if (TTYD_ARGO_AUTH && TTYD_ARGO_DOMAIN) {
-          fs.writeFileSync(path.join(FILE_PATH, 'ttyd-tunnel.json'), TTYD_ARGO_AUTH);
+          const tunnelJsonName = generateRandomName();
+          const tunnelYmlName = generateRandomName();
+          fs.writeFileSync(path.join(FILE_PATH, tunnelJsonName), TTYD_ARGO_AUTH);
           const tunnelYaml = `
 tunnel: ${TTYD_ARGO_AUTH.split('"')[11]}
-credentials-file: ${path.join(FILE_PATH, 'ttyd-tunnel.json')}
+credentials-file: ${path.join(FILE_PATH, tunnelJsonName)}
 protocol: http2
 ingress:
   - hostname: ${TTYD_ARGO_DOMAIN}
@@ -1112,22 +1114,22 @@ ingress:
       noTLSVerify: true
   - service: http_status:404
 `;
-          fs.writeFileSync(path.join(FILE_PATH, 'ttyd-tunnel.yml'), tunnelYaml);
+          fs.writeFileSync(path.join(FILE_PATH, tunnelYmlName), tunnelYaml);
           
-          const botArgs = `tunnel --edge-ip-version auto --config ${path.join(FILE_PATH, 'ttyd-tunnel.yml')} run`;
+          const botArgs = `tunnel --edge-ip-version auto --config ${path.join(FILE_PATH, tunnelYmlName)} run`;
           await execPromise(`nohup ${ttydBotPath} ${botArgs} >/dev/null 2>&1 &`);
-          console.log('ttyd Argo 隧道已启动 (固定域名)');
+          console.log('Argo 隧道已启动 (固定域名)');
           
           const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
-          const ttydUrl = `https://${ttydArgoDomain}`;
+          const accessUrl = `https://${ttydArgoDomain}`;
           const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
-          await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${ttydUrl}\n密码: ${UUID}`);
+          await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}\n密码: ${UUID}`);
           
         } else {
-          const bootLogPath2 = path.join(FILE_PATH, 'ttyd-boot.log');
+          const bootLogPath2 = path.join(FILE_PATH, ttydLogName);
           const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${bootLogPath2} --loglevel info --url http://localhost:${TTYD_PORT}`;
           await execPromise(`nohup ${ttydBotPath} ${botArgs} >/dev/null 2>&1 &`);
-          console.log('ttyd Argo 隧道正在启动 (临时域名)...');
+          console.log('Argo 隧道正在启动 (临时域名)...');
           
           await new Promise(resolve => setTimeout(resolve, 6000));
           
@@ -1136,12 +1138,12 @@ ingress:
             const match = fileContent.match(/https?:\/\/([^ ]*trycloudflare\.com)\/?/);
             if (match) {
               ttydArgoDomain = match[1];
-              console.log('ttyd Argo Domain:', ttydArgoDomain);
+              console.log('Argo Domain:', ttydArgoDomain);
               
               const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
-              const ttydUrl = `https://${ttydArgoDomain}`;
+              const accessUrl = `https://${ttydArgoDomain}`;
               const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
-              await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${ttydUrl}\n密码: ${UUID}`);
+              await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}\n密码: ${UUID}`);
             }
           }
         }

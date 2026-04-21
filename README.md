@@ -1,16 +1,17 @@
 # nodejs-sshx 翼龙面板部署教程
 
-专为**翼龙面板**优化的 Node.js 脚本，一键部署 **sing-box 多协议代理 + SSHX 网页终端**，并自动同步到 GitHub Gist。
+专为**翼龙面板**优化的 Node.js 脚本，一键部署 **sing-box 多协议代理 / ttyd 网页终端**，并自动同步到 GitHub Gist。
 
 ---
 
 ## 核心特色
 
 - ✅ **多协议支持**：Hysteria2、TUIC、Reality、VLESS-WS、VMess-WS
-- ✅ **Argo 隧道**：支持 Cloudflare Argo 临时/固定隧道
-- ✅ **SSHX 网页终端**：支持通过浏览器访问 SSH
-- ✅ **GitHub Gist 同步**：自动同步 SSHX 链接和节点订阅到 Gist
+- ✅ **Argo 隧道**：支持 Cloudflare Argo 临时/固定隧道 (代理和终端独立隧道)
+- ✅ **ttyd 网页终端**：支持通过浏览器访问 SSH
+- ✅ **GitHub Gist 同步**：自动同步链接和节点订阅到 Gist
 - ✅ **WARP 出站**：支持 WARP/直连/自动三种出站模式
+- ✅ **进程混淆**：二进制文件随机命名，日志无敏感词
 
 ---
 
