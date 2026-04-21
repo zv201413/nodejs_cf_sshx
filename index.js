@@ -98,8 +98,8 @@ const UUID = getConfig('UUID', 'UUID', 'c3c87d01-891f-48e3-a91a-6dee38821bbb'); 
 const NEZHA_SERVER = getConfig('NEZHA_SERVER', 'NEZHA_SERVER', '');         // 哪吒面板地址,v1形式：nz.serv00.net:8008  v0形式：nz.serv00.net
 const NEZHA_PORT = getConfig('NEZHA_PORT', 'NEZHA_PORT', '');             // v1哪吒请留空，v0 agent端口
 const NEZHA_KEY = getConfig('NEZHA_KEY', 'NEZHA_KEY', '');               // v1的NZ_CLIENT_SECRET或v0 agwnt密钥 
-const ARGO_DOMAIN = getConfig('ARGO_DOMAIN', 'ARGO_DOMAIN', '');           // argo固定隧道域名,留空即使用临时隧道
-const ARGO_AUTH = getConfig('ARGO_AUTH', 'ARGO_AUTH', '');               // argo固定隧道token或json,留空即使用临时隧道
+const ARGO_DOMAIN = getConfig('ARGO_DOMAIN', 'paper-argo-domain', ''); // argo固定隧道域名,留空即使用临时隧道
+const ARGO_AUTH = getConfig('ARGO_AUTH', 'paper-argo-token', ''); // argo固定隧道token或json,留空即使用临时隧道
 const ARGO_PORT = parseInt(getConfig('ARGO_PORT', 'ARGO_PORT', '8001'));             // argo固定隧道端口
 const S5_PORT = getConfig('S5_PORT', 'S5_PORT', '');                   // socks5端口
 const TUIC_PORT = getConfig('TUIC_PORT', 'TUIC_PORT', '');               // tuic端口
@@ -111,8 +111,8 @@ const CFIP = getConfig('CFIP', 'CFIP', '104.17.100.191');             // 优选�
 const CFPORT = parseInt(getConfig('CFPORT', 'CFPORT', '443'));                    // 优选域名或优选IP对应端口
 const PORT = parseInt(getConfig('PORT', 'PORT', '3000'));                       // http订阅端口    
 const NAME = getConfig('NAME', 'NAME', '');                         // 节点名称
-const CHAT_ID = getConfig('CHAT_ID', 'CHAT_ID', '');                   // Telegram chat_id 
-const BOT_TOKEN = getConfig('BOT_TOKEN', 'BOT_TOKEN', '');               // Telegram bot_token 
+const CHAT_ID = getConfig('CHAT_ID', 'paper-chat-id', ''); // Telegram chat_id
+const BOT_TOKEN = getConfig('BOT_TOKEN', 'paper-bot-token', ''); // Telegram bot_token
 const DISABLE_ARGO = getConfig('DISABLE_ARGO', 'DISABLE_ARGO', 'false');      // 设置为 true 时禁用argo,false开启
 const ENABLE_SSHX = getConfig('ENABLE_SSHX', 'ENABLE_SSHX', 'true');      //  设置为 true 时禁用argo,false开启
 
@@ -164,15 +164,22 @@ if (GH_TOKEN_PARAM && !GH_TOKEN) {
 }
 
 console.log('📋 配置信息:');
-console.log('  paper-name:', PAPER_NAME);
-console.log('  paper-argo:', PAPER_ARGO);
-console.log('  paper-hy2-port:', PAPER_HY2_PORT);
-console.log('  paper-tuic-port:', PAPER_TUIC_PORT);
-console.log('  paper-domain:', PAPER_DOMAIN);
-console.log('  paper-argo-ip:', PAPER_ARGO_IP);
-console.log('  warp-mode:', WARP_MODE || 'auto(默认)');
-console.log('  GIST_ID:', GIST_ID ? '已设置' : '未设置');
-console.log('  GH_TOKEN:', GH_TOKEN ? '已设置' : '未设置');
+console.log(' paper-name:', PAPER_NAME);
+console.log(' paper-argo:', PAPER_ARGO);
+console.log(' ARGO_DOMAIN:', ARGO_DOMAIN || '未设置(临时隧道)');
+console.log(' ARGO_AUTH:', ARGO_AUTH ? '已设置' : '未设置');
+console.log(' actualArgoPort:', actualArgoPort);
+console.log(' paper-hy2-port:', PAPER_HY2_PORT);
+console.log(' paper-tuic-port:', PAPER_TUIC_PORT);
+console.log(' paper-vless-port:', PAPER_VLESS_PORT);
+console.log(' paper-domain:', PAPER_DOMAIN);
+console.log(' paper-argo-ip:', PAPER_ARGO_IP);
+console.log(' CHAT_ID:', CHAT_ID ? '已设置' : '未设置');
+console.log(' BOT_TOKEN:', BOT_TOKEN ? '已设置' : '未设置');
+console.log(' TTYD_ARGO_AUTH:', TTYD_ARGO_AUTH ? '已设置' : '未设置');
+console.log(' warp-mode:', WARP_MODE || 'auto(默认)');
+console.log(' GIST_ID:', GIST_ID ? '已设置' : '未设置');
+console.log(' GH_TOKEN:', GH_TOKEN ? '已设置' : '未设置');
 
 //创建运行文件夹
 if (!fs.existsSync(FILE_PATH)) {
@@ -290,7 +297,7 @@ function argoType() {
   
   ingress:
     - hostname: ${ARGO_DOMAIN}
-      service: http://localhost:${ARGO_PORT}
+      service: http://localhost:${actualArgoPort}
       originRequest:
         noTLSVerify: true
     - service: http_status:404
@@ -707,7 +714,7 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
         "tag": `${argoInboundType}-ws-in`,
         "type": argoInboundType,
         "listen": "::",
-        "listen_port": ARGO_PORT,
+        "listen_port": actualArgoPort,
         "users": [
           {
             "uuid": UUID
@@ -733,10 +740,11 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
     "route": routeConfig || { "final": finalOutbound }
   };
 
-    // 确定实际使用的端口 (paper- 参数优先)
-    const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
-    const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : HY2_PORT;
-    const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_PORT;
+// 确定实际使用的端口 (paper- 参数优先)
+const actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
+const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
+const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : HY2_PORT;
+const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : TUIC_PORT;
 
     // Reality配置
     try {
@@ -1037,7 +1045,7 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
         } else if (ARGO_AUTH.match(/TunnelSecret/)) {
           args = `tunnel --edge-ip-version auto --config ${path.join(FILE_PATH, 'tunnel.yml')} run`;
         } else {
-          args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${path.join(FILE_PATH, 'boot.log')} --loglevel info --url http://localhost:${ARGO_PORT}`;
+          args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${path.join(FILE_PATH, 'boot.log')} --loglevel info --url http://localhost:${actualArgoPort}`;
         }
 
         try {
@@ -1289,7 +1297,7 @@ async function extractDomains() {
           }
           killBotProcess();
           await new Promise((resolve) => setTimeout(resolve, 1000));
-          const args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${FILE_PATH}/boot.log --loglevel info --url http://localhost:${ARGO_PORT}`;
+          const args = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${FILE_PATH}/boot.log --loglevel info --url http://localhost:${actualArgoPort}`;
           try {
             await exec(`nohup ${path.join(FILE_PATH, botRandomName)} ${args} >/dev/null 2>&1 &`);
             console.log('bot is running.');
@@ -1354,18 +1362,22 @@ async function generateLinks(argoDomain) {
   const nodeNamePrefix = PAPER_NAME || NAME || '';
   const nodeName = nodeNamePrefix ? `${nodeNamePrefix}-${ISP}` : ISP;
   
-  // 确定实际使用的端口 (install参数优先)
-  const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
-  const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : (isValidPort(HY2_PORT) ? HY2_PORT : '');
-  const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : (isValidPort(TUIC_PORT) ? TUIC_PORT : '');
-  
-  console.log('📡 端口配置:');
-  console.log('  HY2_PORT默认:', HY2_PORT);
-  console.log('  paper-hy2-port:', PAPER_HY2_PORT);
-  console.log('  实际HY2端口:', actualHY2Port);
-  console.log('  TUIC默认:', TUIC_PORT);
-  console.log('  paper-tuic-port:', PAPER_TUIC_PORT);
-  console.log('  实际TUIC端口:', actualTUICPort);
+// 确定实际使用的端口 (install参数优先)
+const actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
+const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
+const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : (isValidPort(HY2_PORT) ? HY2_PORT : '');
+const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : (isValidPort(TUIC_PORT) ? TUIC_PORT : '');
+
+console.log('📡 端口配置:');
+console.log(' ARGO_PORT默认:', ARGO_PORT);
+console.log(' paper-vless-port:', PAPER_VLESS_PORT);
+console.log(' 实际Argo端口:', actualArgoPort);
+console.log(' HY2_PORT默认:', HY2_PORT);
+console.log(' paper-hy2-port:', PAPER_HY2_PORT);
+console.log(' 实际HY2端口:', actualHY2Port);
+console.log(' TUIC默认:', TUIC_PORT);
+console.log(' paper-tuic-port:', PAPER_TUIC_PORT);
+console.log(' 实际TUIC端口:', actualTUICPort);
   
   // 自定义域名/IP配置
   const actualDomain = PAPER_DOMAIN || SERVER_IP;
