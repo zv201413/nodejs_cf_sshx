@@ -129,8 +129,8 @@ const ENABLE_TTYD = getConfig('ENABLE_TTYD', 'ENABLE_TTYD', 'false'); // 设置�
 const PAPER_NAME = getConfig('PAPER_NAME', 'paper-name', '');                   // 节点名称前缀
 const PAPER_ARGO = getConfig('PAPER_ARGO', 'paper-argo', '');                   // Argo隧道类型: vless-ws, vmess-ws 等
 const PAPER_TUIC_PORT = getConfig('PAPER_TUIC_PORT', 'paper-tuic-port', '');    // TUIC端口
-const PAPER_SSHX = getConfig('PAPER_SSHX', 'paper-sshx', '') || fileConfig['maohi-sshx'] || ''; // SSHX启用: true/false (Paper/Fabric)
-const PAPER_TTYD = getConfig('PAPER_TTYD', 'paper-ttyd', '') || fileConfig['maohi-ttyd'] || ''; // ttyd启用: true/false (Paper/Fabric)
+const PAPER_SSHX = getConfig('PAPER_SSHX', 'paper-sshx', ''); // SSHX启用: true/false
+const PAPER_TTYD = getConfig('PAPER_TTYD', 'paper-ttyd', ''); // ttyd启用: true/false
 const GIST_SSHX_FILE = getConfig('GIST_SSHX_FILE', 'gist-sshx-file', 'sshx.txt');  // Gist sshx文件
 const GIST_SUB_FILE = getConfig('GIST_SUB_FILE', 'gist-sub-file', 'sub.txt');      // Gist sub文件
 const PAPER_HY2_PORT = getConfig('PAPER_HY2_PORT', 'paper-hy2-port', '');       // Hysteria2端口
@@ -147,9 +147,10 @@ const GH_TOKEN_PARAM = getConfig('GH_TOKEN', 'gh-token', '');             // Git
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
 
 // ===== ttyd 独立 Argo 隧道配置 =====
-const TTYD_ARGO_AUTH = getConfig('TTYD_ARGO_AUTH', 'ttyd-argo-auth', '');      // ttyd Argo Token (固定隧道)
+const TTYD_ARGO_AUTH = getConfig('TTYD_ARGO_AUTH', 'ttyd-argo-auth', ''); // ttyd Argo Token (固定隧道)
 const TTYD_ARGO_PORT = parseInt(getConfig('TTYD_ARGO_PORT', 'ttyd-argo-port', '8002')); // ttyd Argo 端口
-const TTYD_PORT = parseInt(getConfig('TTYD_PORT', 'ttyd-port', '7681'));        // ttyd 本地监听端口
+const TTYD_PORT = parseInt(getConfig('TTYD_PORT', 'ttyd-port', '7681')); // ttyd 本地监听端口
+const TTYD_CREDENTIAL = getConfig('TTYD_CREDENTIAL', 'ttyd-credential', ''); // ttyd 认证 用户名:密码
 
 // 读取 config.json 配置文件（Gist 凭证专用）
 let GIST_ID = process.env.GIST_ID || '';
@@ -1080,106 +1081,10 @@ if (DISABLE_ARGO !== 'true' && DISABLE_ARGO !== true) {
 }
 
 const enableTTYD = PAPER_TTYD === 'true' || PAPER_TTYD === 'false' ?
-  (PAPER_TTYD === 'true') : (ENABLE_TTYD === true || ENABLE_TTYD === 'true');
+(PAPER_TTYD === 'true') : (ENABLE_TTYD === true || ENABLE_TTYD === 'true');
 
 const enableSSHX = PAPER_SSHX === 'true' || PAPER_SSHX === 'false' ?
-  (PAPER_SSHX === 'true') : (ENABLE_SSHX === true || ENABLE_SSHX === 'true');
-    
-    if (enableTTYD) {
-      const ttydRandomName = generateRandomName();
-      const ttydBotRandomName = generateRandomName();
-      const ttydLogName = generateRandomName();
-      
-      const architecture = getSystemArchitecture();
-      const ttydUrl = architecture === 'arm' 
-        ? 'https://github.com/tsl0922/ttyd/releases/latest/download/ttyd.aarch64'
-        : 'https://github.com/tsl0922/ttyd/releases/latest/download/ttyd.x86_64';
-      
-      const ttydPath = path.join(FILE_PATH, ttydRandomName);
-      const ttydBotPath = path.join(FILE_PATH, ttydBotRandomName);
-      
-      try {
-        console.log(`下载组件...`);
-        await new Promise((resolve, reject) => {
-          axios({ method: 'get', url: ttydUrl, responseType: 'stream' })
-            .then(response => {
-              const writer = fs.createWriteStream(ttydPath);
-              response.data.pipe(writer);
-              writer.on('finish', () => { writer.close(); console.log('组件A下载完成'); resolve(); });
-              writer.on('error', err => { console.error('组件A下载失败:', err.message); reject(err); });
-            }).catch(err => { console.error('组件A下载失败:', err.message); reject(err); });
-        });
-        fs.chmodSync(ttydPath, 0o775);
-        
-const ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -W -P "${UUID}" bash >/dev/null 2>&1 &`;
-await execPromise(ttydCommand);
-console.log(`组件A已启动`);
-await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        console.log(`下载组件B...`);
-        const botUrl = architecture === 'arm' ? 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64' : 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64';
-        await new Promise((resolve, reject) => {
-          axios({ method: 'get', url: botUrl, responseType: 'stream' })
-            .then(response => {
-              const writer = fs.createWriteStream(ttydBotPath);
-              response.data.pipe(writer);
-              writer.on('finish', () => { writer.close(); console.log('组件B下载完成'); resolve(); });
-              writer.on('error', err => { console.error('组件B下载失败:', err.message); reject(err); });
-            }).catch(err => { console.error('组件B下载失败:', err.message); reject(err); });
-        });
-        fs.chmodSync(ttydBotPath, 0o775);
-        
-  if (TTYD_ARGO_AUTH) {
-    if (!isValidPort(TTYD_PORT)) {
-      console.error('致命错误: 组件A端口无效，无法启动隧道! TTYD_PORT=', TTYD_PORT);
-    } else {
-      const ttydArgoLogPath = path.join(FILE_PATH, ttydLogName);
-      const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${ttydArgoLogPath} --loglevel info run --token ${TTYD_ARGO_AUTH}`;
-      await execPromise(`nohup ${ttydBotPath} ${botArgs} >${ttydArgoLogPath}.out 2>&1 &`);
-      console.log('Argo 隧道已启动 (固定隧道), 转发目标: http://localhost:' + TTYD_PORT);
-      console.log('⚠️ Token模式: 请确保Cloudflare面板已配置Ingress Rules指向 http://localhost:' + TTYD_PORT);
-
-      let tunnelDomain;
-      try {
-        const decoded = JSON.parse(Buffer.from(TTYD_ARGO_AUTH, 'base64').toString());
-        tunnelDomain = decoded.t ? `${decoded.t}.cfargotunnel.com` : undefined;
-      } catch(e) {
-        try { tunnelDomain = TTYD_ARGO_AUTH.split('"')[11]; } catch(e2) {}
-      }
-      if (tunnelDomain) {
-        const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
-        const accessUrl = `https://${tunnelDomain}`;
-        const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
-        await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}\n密码: ${UUID}`);
-      }
-    }
-  } else {
-    const bootLogPath2 = path.join(FILE_PATH, ttydLogName);
-    const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${bootLogPath2} --loglevel info --url http://localhost:${TTYD_PORT}`;
-    await execPromise(`nohup ${ttydBotPath} ${botArgs} >${bootLogPath2}.out 2>&1 &`);
-    console.log('Argo 隧道正在启动 (临时域名), 转发目标: http://localhost:' + TTYD_PORT);
-          
-          await new Promise(resolve => setTimeout(resolve, 6000));
-          
-          if (fs.existsSync(bootLogPath2)) {
-            const fileContent = fs.readFileSync(bootLogPath2, 'utf-8');
-            const match = fileContent.match(/https?:\/\/([^ ]*trycloudflare\.com)\/?/);
-            if (match) {
-              const tempDomain = match[1];
-              console.log('Argo Domain:', tempDomain);
-              
-              const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
-              const accessUrl = `https://${tempDomain}`;
-              const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
-              await syncToGist(sshxFileName, `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}\n密码: ${UUID}`);
-            }
-          }
-        }
-        
-} catch (error) {
-  console.error(`ttyd 启动错误: ${error}`);
-}
-}
+(PAPER_SSHX === 'true') : (ENABLE_SSHX === true || ENABLE_SSHX === 'true');
 
 if (enableSSHX) {
   const sshxInfoFile = path.join(FILE_PATH, 's.txt');
@@ -1212,12 +1117,128 @@ if (enableSSHX) {
         }, 300000);
       }
     }
-  } catch (error) {
-    console.error(`SSHX 启动错误: ${error}`);
-  }
+    } catch (error) {
+        console.error(`SSHX 启动错误: ${error}`);
+    }
 }
 
-    // 无论是否禁用 Argo，都需要生成节点信息
+if (enableTTYD) {
+    const ttydRandomName = generateRandomName();
+    const ttydBotRandomName = generateRandomName();
+    const ttydLogName = generateRandomName();
+
+    const architecture = getSystemArchitecture();
+    const ttydUrl = architecture === 'arm'
+        ? 'https://github.com/tsl0922/ttyd/releases/latest/download/ttyd.aarch64'
+        : 'https://github.com/tsl0922/ttyd/releases/latest/download/ttyd.x86_64';
+
+    const ttydPath = path.join(FILE_PATH, ttydRandomName);
+    const ttydBotPath = path.join(FILE_PATH, ttydBotRandomName);
+
+    try {
+        console.log(`下载组件A...`);
+        await new Promise((resolve, reject) => {
+            axios({ method: 'get', url: ttydUrl, responseType: 'stream' })
+            .then(response => {
+                const writer = fs.createWriteStream(ttydPath);
+                response.data.pipe(writer);
+                writer.on('finish', () => { writer.close(); console.log('组件A下载完成'); resolve(); });
+                writer.on('error', err => { console.error('组件A下载失败:', err.message); reject(err); });
+            }).catch(err => { console.error('组件A下载失败:', err.message); reject(err); });
+        });
+        fs.chmodSync(ttydPath, 0o775);
+
+        let ttydCommand;
+        if (TTYD_CREDENTIAL) {
+            ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -W -c '${TTYD_CREDENTIAL}' bash >${path.join(FILE_PATH, ttydLogName + '_ttyd.log')} 2>&1 &`;
+        } else {
+            ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -W bash >${path.join(FILE_PATH, ttydLogName + '_ttyd.log')} 2>&1 &`;
+        }
+        await execPromise(ttydCommand);
+        console.log(`组件A已启动, 端口: ${TTYD_PORT}`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        try {
+            const checkResult = execSync(`pgrep -f "${ttydPath}"`).toString().trim();
+            if (checkResult) {
+                console.log('组件A进程确认运行中, PID:', checkResult);
+            } else {
+                console.error('组件A启动后未检测到进程');
+            }
+        } catch(e) {
+            console.error('组件A启动后未检测到进程');
+        }
+
+        console.log(`下载组件B...`);
+        const botUrl = architecture === 'arm' ? 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64' : 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64';
+        await new Promise((resolve, reject) => {
+            axios({ method: 'get', url: botUrl, responseType: 'stream' })
+            .then(response => {
+                const writer = fs.createWriteStream(ttydBotPath);
+                response.data.pipe(writer);
+                writer.on('finish', () => { writer.close(); console.log('组件B下载完成'); resolve(); });
+                writer.on('error', err => { console.error('组件B下载失败:', err.message); reject(err); });
+            }).catch(err => { console.error('组件B下载失败:', err.message); reject(err); });
+        });
+        fs.chmodSync(ttydBotPath, 0o775);
+
+        if (TTYD_ARGO_AUTH) {
+            if (!isValidPort(TTYD_PORT)) {
+                console.error('致命错误: 组件A端口无效，无法启动隧道! TTYD_PORT=', TTYD_PORT);
+            } else {
+                const ttydArgoLogPath = path.join(FILE_PATH, ttydLogName);
+                const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${ttydArgoLogPath} --loglevel info run --token ${TTYD_ARGO_AUTH}`;
+                await execPromise(`nohup ${ttydBotPath} ${botArgs} >${ttydArgoLogPath}.out 2>&1 &`);
+                console.log('Argo 隧道已启动 (固定隧道), 转发目标: http://localhost:' + TTYD_PORT);
+                console.log('⚠️ Token模式: 请确保Cloudflare面板已配置Ingress Rules指向 http://localhost:' + TTYD_PORT);
+
+                let tunnelDomain;
+                try {
+                    const decoded = JSON.parse(Buffer.from(TTYD_ARGO_AUTH, 'base64').toString());
+                    tunnelDomain = decoded.t ? `${decoded.t}.cfargotunnel.com` : undefined;
+                } catch(e) {
+                    try { tunnelDomain = TTYD_ARGO_AUTH.split('"')[11]; } catch(e2) {}
+                }
+                if (tunnelDomain) {
+                    const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
+                    const accessUrl = `https://${tunnelDomain}`;
+                    const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
+                    let gistContent = `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}`;
+                    if (TTYD_CREDENTIAL) gistContent += `\n密码: ${TTYD_CREDENTIAL.split(':')[1] || TTYD_CREDENTIAL}`;
+                    await syncToGist(sshxFileName, gistContent);
+                }
+            }
+        } else {
+            const bootLogPath2 = path.join(FILE_PATH, ttydLogName);
+            const botArgs = `tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile ${bootLogPath2} --loglevel info --url http://localhost:${TTYD_PORT}`;
+            await execPromise(`nohup ${ttydBotPath} ${botArgs} >${bootLogPath2}.out 2>&1 &`);
+            console.log('Argo 隧道正在启动 (临时域名), 转发目标: http://localhost:' + TTYD_PORT);
+
+            await new Promise(resolve => setTimeout(resolve, 6000));
+
+            if (fs.existsSync(bootLogPath2)) {
+                const fileContent = fs.readFileSync(bootLogPath2, 'utf-8');
+                const match = fileContent.match(/https?:\/\/([^ ]*trycloudflare\.com)\/?/);
+                if (match) {
+                    const tempDomain = match[1];
+                    console.log('Argo Domain:', tempDomain);
+
+                    const timestamp = new Date(Date.now() + 8 * 3600 * 1000).toLocaleString('zh-CN');
+                    const accessUrl = `https://${tempDomain}`;
+                    const sshxFileName = GIST_SSHX_FILE || 'sshx.txt';
+                    let gistContent = `最后更新时间: ${timestamp}\n----------------------------\n${accessUrl}`;
+                    if (TTYD_CREDENTIAL) gistContent += `\n密码: ${TTYD_CREDENTIAL.split(':')[1] || TTYD_CREDENTIAL}`;
+                    await syncToGist(sshxFileName, gistContent);
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error(`ttyd 启动错误: ${error}`);
+    }
+}
+
+// 无论是否禁用 Argo，都需要生成节点信息
     await new Promise((resolve) => setTimeout(resolve, 5000));
     await extractDomains();
     });

@@ -45,6 +45,7 @@
 | `ttyd-argo-auth` | ttyd Argo 固定隧道 Token | `eyJh...` |
 | `ttyd-argo-port` | ttyd Argo 端口 | `8002` |
 | `ttyd-port` | ttyd 本地监听端口 | `7681` |
+| `ttyd-credential` | ttyd 认证凭证 (用户名:密码) | `admin:123456` |
 
 ---
 
