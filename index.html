@@ -393,6 +393,7 @@ function preprocessWarpData(raw) {
   var s = raw.trim();
   var privateKey = '', ipv6 = '', reserved = '';
 
+  // 方式1: key=value 格式 (私钥：xxx, IPV6：xxx, reserved：[x,x,x])
   var pkMatch = s.match(/(?:PrivateKey|Private[_]?Key|私钥)\s*[=:\uff1a]\s*([A-Za-z0-9+/=]{10,})/i);
   if (pkMatch) privateKey = pkMatch[1];
 
@@ -406,26 +407,39 @@ function preprocessWarpData(raw) {
   var resMatch = s.match(/(?:Reserved|reserved|保留值)[：:\uff1a\s]*(\[[^\]]+\])/i);
   if (resMatch) reserved = resMatch[1];
 
-  if (!privateKey && !ipv6) {
-    var wgPk = s.match(/^[ \t]*(?:PrivateKey|Private[_]?Key)\s*=\s*([A-Za-z0-9+/=]{10,})/mi);
-    if (wgPk) privateKey = wgPk[1];
-  }
-  if (!ipv6) {
-    var wgAddr = s.match(/^[ \t]*Address\s*=\s*(.*)/mi);
-    if (wgAddr) {
-      var parts = wgAddr[1].split(',');
-      for (var i = 0; i < parts.length; i++) {
-        var p = parts[i].trim();
-        if (p.includes(':')) {
-          ipv6 = p.replace(/\/\d+$/, '') + '/128';
-          break;
+  // 方式2: WireGuard INI 格式 (PrivateKey = xxx, Address = xxx, Reserved = [x,x,x])
+  if (!privateKey || !ipv6 || !reserved) {
+    var lines = s.split(/\r?\n/);
+    var inInterface = false;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (line.startsWith('[') && line.endsWith(']')) {
+        inInterface = line.toLowerCase() === '[interface]';
+        continue;
+      }
+      if (!inInterface) continue;
+      if (!privateKey) {
+        var m = line.match(/^(?:PrivateKey|Private[_]?Key)\s*=\s*([A-Za-z0-9+/=]{10,})/i);
+        if (m) privateKey = m[1];
+      }
+      if (!ipv6) {
+        var m = line.match(/^Address\s*=\s*(.*)/i);
+        if (m) {
+          var parts = m[1].split(',');
+          for (var j = 0; j < parts.length; j++) {
+            var p = parts[j].trim();
+            if (p.includes(':')) {
+              ipv6 = p.replace(/\/\d+$/, '') + '/128';
+              break;
+            }
+          }
         }
       }
+      if (!reserved) {
+        var m = line.match(/^Reserved\s*=\s*(\[[^\]]+\])/i);
+        if (m) reserved = m[1];
+      }
     }
-  }
-  if (!reserved) {
-    var wgRes = s.match(/^[ \t]*Reserved\s*=\s*(\[[^\]]+\])/mi);
-    if (wgRes) reserved = wgRes[1];
   }
 
   if (!privateKey || !ipv6) return s;
