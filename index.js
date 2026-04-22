@@ -108,7 +108,7 @@ if (ARGO_AUTH && !ARGO_DOMAIN) {
     if (decoded.t) ARGO_DOMAIN = `${decoded.t}.cfargotunnel.com`;
   } catch(e) {}
 }
-const ARGO_PORT = parseInt(getConfig('ARGO_PORT', 'ARGO_PORT', '8001'));             // argo固定隧道端口
+const ARGO_PORT = parseInt(getConfig('ARGO_PORT', 'ARGO_PORT', '8001')); // argo固定隧道端口
 const S5_PORT = getConfig('S5_PORT', 'S5_PORT', '');                   // socks5端口
 const TUIC_PORT = getConfig('TUIC_PORT', 'TUIC_PORT', '');               // tuic端口
 const HY2_PORT = getConfig('HY2_PORT', 'HY2_PORT', ''); // hy2端口
@@ -146,6 +146,9 @@ const GH_TOKEN_PARAM = getConfig('GH_TOKEN', 'gh-token', '');             // Git
 // ===== WARP/直连出站配置 =====
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
 const WARP_DATA = getConfig('WARP_DATA', 'warp-data', '');
+
+// ===== 全局运行时变量（hoisted，解决作用域问题） =====
+let actualArgoPort = ARGO_PORT; // 默认值，后续由 continueExecution/generateLinks 覆盖
 
 // ===== ttyd 独立 Argo 隧道配置 =====
 const TTYD_ARGO_AUTH = getConfig('TTYD_ARGO_AUTH', 'ttyd-argo-auth', ''); // ttyd Argo Token (固定隧道)
@@ -806,7 +809,7 @@ warpOutConfig = {
   }
     
 // 确定实际使用的端口 (paper- 参数优先)
-const actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
+actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
 
 // 根据PAPER_ARGO选择inbound类型
 const argoProtocol = PAPER_ARGO || 'vmess-ws';
@@ -1565,7 +1568,7 @@ async function generateLinks(argoDomain) {
   const nodeName = nodeNamePrefix ? `${nodeNamePrefix}-${ISP}` : ISP;
   
 // 确定实际使用的端口 (install参数优先)
-const actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
+actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
 const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
 const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : (isValidPort(HY2_PORT) ? HY2_PORT : '');
 const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : (isValidPort(TUIC_PORT) ? TUIC_PORT : '');
@@ -1699,7 +1702,7 @@ async function sendTelegram() {
       const message = fs.readFileSync(path.join(FILE_PATH, 'sub.txt'), 'utf8');
       const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
       
-      const escapedName = NAME.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+      const escapedName = (PAPER_NAME || NAME || 'Node').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
       
       const params = {
           chat_id: CHAT_ID,

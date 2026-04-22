@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>配置生成器</title>
+<title>WorldMagic 配置生成器</title>
 <style>
 :root {
 --bg:#0b1020;
@@ -221,9 +221,9 @@ font-family: monospace;
 <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
 <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
 </button>
-<h1>配置生成器</h1>
+<h1>WorldMagic 配置生成器</h1>
 <p>勾选协议 → 填写端口 → 复制命令 → 粘贴到 application.properties → 重启服务器</p>
-<p><a href="https://github.com/zv201413/nodejs_sshx" target="_blank">📦 GitHub：zv201413/nodejs_sshx</a></p>
+<p><a href="https://github.com/zv201413/PaperMC_WorldMagic" target="_blank">📦 GitHub：zv201413/PaperMC_WorldMagic</a></p>
 </header>
 
 <div class="main-grid">
@@ -290,7 +290,7 @@ font-family: monospace;
 <option value="warp">全局 WARP 出站</option>
 <option value="direct">直连（关闭WARP）</option>
 </select></div>
-<div class="row"><label>WARP 数据</label><textarea id="p-warp-data" rows="4" placeholder="粘贴 WireGuard 配置或 Private_key：xxx 格式&#10;留空则自动从API获取"></textarea></div>
+<div class="row"><label>WARP 数据</label><textarea id="p-warp-data" rows="4" placeholder="支持多种格式：WireGuard配置 / API文本 / 中文标签&#10;自动转换为标准格式，留空则自动从API获取"></textarea></div>
 
 <div class="section-label">GitHub Gist 同步</div>
 <div class="gist-row" id="p-gist-row"><label>Gist ID <span class="pill">gist-id</span></label><input type="text" id="p-gist-id" placeholder="留空则不启用"></div>
@@ -383,8 +383,58 @@ renderPaper();
 });
 
 ['p-domain','p-uuid','p-name','p-argo-ip','p-argo-domain','p-argo-token','p-naive-user','p-naive-pass','p-gist-id','p-gist-token','p-chat-id','p-bot-token','p-ttyd-argo-auth','p-ttyd-credential','p-warp-mode','p-warp-data'].forEach(function(id) {
-$(id).addEventListener('input', renderPaper);
+  $(id).addEventListener('input', renderPaper);
 });
+
+var WARP_CF_PUBKEY = 'bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=';
+
+function preprocessWarpData(raw) {
+  if (!raw || !raw.trim()) return '';
+  var s = raw.trim();
+  var privateKey = '', ipv6 = '', reserved = '';
+
+  var pkMatch = s.match(/(?:PrivateKey|Private[_]?Key|私钥)\s*[=:\uff1a]\s*([A-Za-z0-9+/=]{10,})/i);
+  if (pkMatch) privateKey = pkMatch[1];
+
+  var addrMatch = s.match(/(?:Address|IPV6|IPv6|地址)\s*[=:\uff1a]\s*([a-fA-F0-9:.]+(?:\/\d{1,3})?)/i);
+  if (addrMatch) {
+    ipv6 = addrMatch[1].replace(/\/\d+$/, '');
+    if (ipv6 && !ipv6.includes('/')) ipv6 = ipv6 + '/128';
+    else if (ipv6 && !/\/128$/.test(ipv6)) ipv6 = ipv6.replace(/\/\d+$/, '/128');
+  }
+
+  var resMatch = s.match(/(?:Reserved|reserved|保留值)\s*[=:\uff1a]\s*(\[[\d,\s]+\])/);
+  if (resMatch) reserved = resMatch[1];
+
+  if (!privateKey && !ipv6) {
+    var wgPk = s.match(/^[ \t]*(?:PrivateKey|Private[_]?Key)\s*=\s*([A-Za-z0-9+/=]{10,})/mi);
+    if (wgPk) privateKey = wgPk[1];
+  }
+  if (!ipv6) {
+    var wgAddr = s.match(/^[ \t]*Address\s*=\s*(.*)/mi);
+    if (wgAddr) {
+      var parts = wgAddr[1].split(',');
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i].trim();
+        if (p.includes(':')) {
+          ipv6 = p.replace(/\/\d+$/, '') + '/128';
+          break;
+        }
+      }
+    }
+  }
+  if (!reserved) {
+    var wgRes = s.match(/^[ \t]*Reserved\s*=\s*(\[[^\]]+\])/mi);
+    if (wgRes) reserved = wgRes[1];
+  }
+
+  if (!privateKey || !ipv6) return s;
+
+  var result = '[Interface]\nPrivateKey = ' + privateKey + '\nAddress = ' + ipv6;
+  result += '\n\n[Peer]\nPublicKey = ' + WARP_CF_PUBKEY;
+  if (reserved) result += '\nReserved = ' + reserved;
+  return result;
+}
 
 function renderPaper() {
 $('p-ttyd-argo-section').style.display = $('cb-ttyd').checked ? '' : 'none';
@@ -454,7 +504,7 @@ if (ttydCredential) parts.push(kv('ttyd-credential', ttydCredential));
 var warpMode = $('p-warp-mode').value.trim();
 if (warpMode) parts.push(kv('warp-mode', warpMode));
 var warpData = $('p-warp-data').value.trim();
-if (warpData) parts.push(kv('warp-data', warpData));
+  if (warpData) { var processed = preprocessWarpData(warpData); if (processed) parts.push(kv('warp-data', processed)); }
 
 if (name) {
 parts.push(kv('gist-sshx-file', 'sshx_' + name + '.txt'));
