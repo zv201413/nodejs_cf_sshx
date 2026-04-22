@@ -640,7 +640,7 @@ async function fetchWarpConfig() {
     
     for (const url of warpApiUrls) {
       try {
-        const response = await axios.get(url, { timeout: 5000 });
+        const response = await axios.get(url, { timeout: 5000, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
         const data = response.data;
         
         // 解析返回的数据，格式：Private_key：xxx IPV6：xxx reserved：[x,x,x]
@@ -727,37 +727,40 @@ if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
       ]
     };
     finalOutbound = "warp-out";
+    routeConfig = { "final": "warp-out", "rules": [{ "action": "sniff" }, { "action": "resolve", "strategy": "prefer_ipv6" }] };
   } else if (WARP_MODE === 'direct' || WARP_MODE === '') {
       // 直连模式或默认模式(自动)
       if (WARP_MODE === 'direct') {
         finalOutbound = "direct";
       }
       // 默认自动模式: 添加Netflix/OpenAI规则，通过WARP出站
-      routeConfig = {
-        "rule_set": [
-          {
+routeConfig = {
+    "rules": [
+        { "action": "sniff" },
+        { "action": "resolve", "strategy": "prefer_ipv6" },
+        {
+            "rule_set": ["openai", "netflix"],
+            "outbound": "wireguard-out"
+        }
+    ],
+    "final": "direct",
+    "rule_set": [
+        {
             "tag": "netflix",
             "type": "remote",
             "format": "binary",
             "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/netflix.srs",
             "download_detour": "direct"
-          },
-          {
+        },
+        {
             "tag": "openai",
             "type": "remote",
             "format": "binary",
             "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/openai.srs",
             "download_detour": "direct"
-          }
-        ],
-        "rules": [
-          {
-            "rule_set": ["openai", "netflix"],
-            "outbound": "wireguard-out"
-          }
-        ],
-        "final": "direct"
-      };
+        }
+    ]
+};
     warpOutConfig = {
       "type": "wireguard",
       "tag": "wireguard-out",
