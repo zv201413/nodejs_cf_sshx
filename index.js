@@ -1111,7 +1111,7 @@ const enableSSHX = PAPER_SSHX === 'true' || PAPER_SSHX === 'false' ?
         });
         fs.chmodSync(ttydPath, 0o775);
         
-const ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -P "${UUID}" bash >/dev/null 2>&1 &`;
+const ttydCommand = `nohup ${ttydPath} -p ${TTYD_PORT} -W -P "${UUID}" bash >/dev/null 2>&1 &`;
 await execPromise(ttydCommand);
 console.log(`组件A已启动`);
 await new Promise(resolve => setTimeout(resolve, 2000));
