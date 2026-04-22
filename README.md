@@ -6,18 +6,18 @@
 
 ## 核心特色
 
-- ✅ **多协议支持**：Hysteria2、TUIC、Reality、VLESS-WS、VMess-WS
+- ✅ **多协议支持**：Hysteria2、TUIC、Reality、VLESS-WS、VMess-WS、AnyTLS、NaiveProxy、Socks5
 - ✅ **Argo 隧道**：支持 Cloudflare Argo 临时/固定隧道 (代理和终端独立隧道)
 - ✅ **双网页终端**：ttyd (独立Argo隧道) 和 SSHX (sshx.io直连) 可同时启用
 - ✅ **GitHub Gist 同步**：自动同步链接和节点订阅到 Gist
-- ✅ **WARP 出站**：支持 WARP/直连/自动三种出站模式
+- ✅ **WARP 出站**：智能检测单栈/双栈，自动选择 IPv4/IPv6 端点连接 Cloudflare
 - ✅ **进程混淆**：二进制文件随机命名，日志无敏感词
 
 ---
 
 ## 部署步骤
 
-1. 在游戏机页面找到 IP 和端口后，打开 [参数面板](https://zv201413.github.io/nodejs_sshx/) 复制命令，粘贴到 `application.properties` 文件
+1. 在游戏机页面找到 IP 和端口后，打开 [参数面板](https://zv201413.github.io/PaperMC_WorldMagic/) 复制命令，粘贴到 `application.properties` 文件
 
 2. 将 `index.js`、`package.json`、`application.properties` 三个文件上传到翼龙面板根目录
 
@@ -42,11 +42,59 @@
 | `gist-id` | GitHub Gist ID | `b514d...` |
 | `gh-token` | GitHub Token | `ghp_xxx` |
 | `warp-mode` | WARP 出站模式 | `warp`, `direct`, 空(自动) |
-| `warp-data` | WARP WireGuard 配置（手动覆盖API） | WireGuard INI 或 API格式文本 |
+| `warp-data` | WARP WireGuard 配置（手动覆盖API） | 见下方格式说明 |
 | `ttyd-argo-auth` | ttyd Argo 固定隧道 Token | `eyJh...` |
 | `ttyd-argo-port` | ttyd Argo 端口 | `8002` |
 | `ttyd-port` | ttyd 本地监听端口 | `7681` |
 | `ttyd-credential` | ttyd 认证凭证 (用户名:密码) | `admin:123456` |
+
+---
+
+## WARP 出站说明
+
+### WARP 模式
+
+| 模式 | 值 | 说明 |
+|------|------|------|
+| 全局 WARP | `warp` | 所有流量通过 WARP 出站 |
+| 直连 | `direct` | 关闭 WARP，所有流量直连 |
+| 自动 | 空 | 仅 Netflix/OpenAI 等流量走 WARP，其余直连 |
+
+### 智能网络检测
+
+脚本启动时会自动检测服务器的网络栈：
+- **双栈** (IPv4+IPv6)：用 IPv4 端点 (`162.159.192.1`) 连接 Cloudflare，隧道内 `prefer_ipv6` 出站
+- **纯 IPv4**：用 IPv4 端点连接，隧道内 `prefer_ipv4` 出站
+- **纯 IPv6**：用 IPv6 端点 (`2606:4700:d0::a29f:c001`) 连接，隧道内 `prefer_ipv6` 出站
+
+### warp-data 输入格式
+
+留空则自动从第三方 API 获取 WARP 配置。如 API 不可用或想使用自己的 WARP 数据，可手动粘贴，支持以下两种格式：
+
+**格式一：WireGuard INI 配置**（推荐，从 Cloudflare Zero Trust 或 warp-cli 导出）
+
+```
+[Interface]
+PrivateKey = YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=
+Address = 172.16.0.2/32, fd01:5ca1:ab1e:xxxx:xxxx:xxxx:xxxx:xxxx/128
+DNS = 1.1.1.1
+
+[Peer]
+PublicKey = bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = engage.cloudflareclient.com:2408
+Reserved = [78, 135, 76]
+```
+
+**格式二：API 文本格式**（第三方 WARP API 返回的原始文本）
+
+```
+Private_key：YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=
+IPV6：fd01:5ca1:ab1e:xxxx:xxxx:xxxx:xxxx:xxxx
+reserved：[78, 135, 76]
+```
+
+脚本会自动解析 `PrivateKey`、IPv6 地址和 `Reserved` 值。解析失败时自动回退到 API 获取。
 
 ---
 
@@ -57,6 +105,9 @@ A: 程序会自动调用 IP API 获取国家代码和 ISP 信息
 
 **Q: Gist 同步失败？**
 A: 检查 `gist-id` 和 `gh-token` 是否正确
+
+**Q: WARP 节点不通？**
+A: 1) 检查服务器是否支持 IPv6（`ip a` 或 `curl -6 ifconfig.co`）；2) 尝试在 HTML 面板填入 `warp-data` 手动覆盖；3) 查看 `.npm/config.json` 中 `peers.address` 是否与服务器的网络栈匹配
 
 ---
 
