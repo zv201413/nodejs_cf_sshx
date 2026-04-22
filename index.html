@@ -278,10 +278,19 @@ font-family: monospace;
 <div class="row"><label>NaiveProxy 密码</label><input type="text" id="p-naive-pass" placeholder="留空则自动生成"></div>
 
 <div id="p-ttyd-argo-section" style="display:none">
-<div class="section-label">ttyd 独立 Argo 隧道</div>
-<div class="row"><label>Argo Token</label><input type="text" id="p-ttyd-argo-auth" placeholder="留空则临时隧道"></div>
-<div class="row"><label>认证 凭证</label><input type="text" id="p-ttyd-credential" placeholder="用户名:密码"></div>
+  <div class="section-label">ttyd 独立 Argo 隧道</div>
+  <div class="row"><label>Argo Token</label><input type="text" id="p-ttyd-argo-auth" placeholder="留空则临时隧道"></div>
+  <div class="row"><label>认证 凭证</label><input type="text" id="p-ttyd-credential" placeholder="用户名:密码"></div>
 </div>
+
+<div class="section-label">WARP 出站（可选）</div>
+<div class="row"><label>WARP 模式</label>
+<select id="p-warp-mode">
+<option value="">自动（Netflix/OpenAI走WARP）</option>
+<option value="warp">全局 WARP 出站</option>
+<option value="direct">直连（关闭WARP）</option>
+</select></div>
+<div class="row"><label>WARP 数据</label><textarea id="p-warp-data" rows="4" placeholder="粘贴 WireGuard 配置或 Private_key：xxx 格式&#10;留空则自动从API获取"></textarea></div>
 
 <div class="section-label">GitHub Gist 同步</div>
 <div class="gist-row" id="p-gist-row"><label>Gist ID <span class="pill">gist-id</span></label><input type="text" id="p-gist-id" placeholder="留空则不启用"></div>
@@ -373,7 +382,7 @@ if (v === 'vless-ws') { $('cb-vless').checked = true; $('item-vless').classList.
 renderPaper();
 });
 
-['p-domain','p-uuid','p-name','p-argo-ip','p-argo-domain','p-argo-token','p-naive-user','p-naive-pass','p-gist-id','p-gist-token','p-chat-id','p-bot-token','p-ttyd-argo-auth','p-ttyd-credential'].forEach(function(id) {
+['p-domain','p-uuid','p-name','p-argo-ip','p-argo-domain','p-argo-token','p-naive-user','p-naive-pass','p-gist-id','p-gist-token','p-chat-id','p-bot-token','p-ttyd-argo-auth','p-ttyd-credential','p-warp-mode','p-warp-data'].forEach(function(id) {
 $(id).addEventListener('input', renderPaper);
 });
 
@@ -441,6 +450,11 @@ var ttydArgoAuth = $('p-ttyd-argo-auth').value.trim();
 if (ttydArgoAuth) parts.push(kv('ttyd-argo-auth', ttydArgoAuth));
 var ttydCredential = $('p-ttyd-credential').value.trim();
 if (ttydCredential) parts.push(kv('ttyd-credential', ttydCredential));
+
+var warpMode = $('p-warp-mode').value.trim();
+if (warpMode) parts.push(kv('warp-mode', warpMode));
+var warpData = $('p-warp-data').value.trim();
+if (warpData) parts.push(kv('warp-data', warpData));
 
 if (name) {
 parts.push(kv('gist-sshx-file', 'sshx_' + name + '.txt'));

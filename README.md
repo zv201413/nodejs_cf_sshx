@@ -42,6 +42,7 @@
 | `gist-id` | GitHub Gist ID | `b514d...` |
 | `gh-token` | GitHub Token | `ghp_xxx` |
 | `warp-mode` | WARP 出站模式 | `warp`, `direct`, 空(自动) |
+| `warp-data` | WARP WireGuard 配置（手动覆盖API） | WireGuard INI 或 API格式文本 |
 | `ttyd-argo-auth` | ttyd Argo 固定隧道 Token | `eyJh...` |
 | `ttyd-argo-port` | ttyd Argo 端口 | `8002` |
 | `ttyd-port` | ttyd 本地监听端口 | `7681` |

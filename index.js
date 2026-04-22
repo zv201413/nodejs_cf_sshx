@@ -145,6 +145,7 @@ const GH_TOKEN_PARAM = getConfig('GH_TOKEN', 'gh-token', '');             // Git
 
 // ===== WARP/直连出站配置 =====
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
+const WARP_DATA = getConfig('WARP_DATA', 'warp-data', '');
 
 // ===== ttyd 独立 Argo 隧道配置 =====
 const TTYD_ARGO_AUTH = getConfig('TTYD_ARGO_AUTH', 'ttyd-argo-auth', ''); // ttyd Argo Token (固定隧道)
@@ -580,8 +581,58 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
     // 生成sb配置文件
   let config;
   
-  // 从第三方API获取WARP配置
-  async function fetchWarpConfig() {
+function parseWarpData(warpDataStr) {
+    if (!warpDataStr || typeof warpDataStr !== 'string') return null;
+    try {
+        const lines = warpDataStr.split(/\r?\n/);
+        let inInterface = false;
+        let privateKey = null;
+        let ipv6 = null;
+        let reserved = null;
+        for (const raw of lines) {
+            const line = raw.trim();
+            if (line.startsWith('[') && line.endsWith(']')) {
+                inInterface = line.toLowerCase() === '[interface]';
+                continue;
+            }
+            if (!inInterface) continue;
+            const mKey = line.match(/Private[_]?Key\s*[=:]\s*([A-Za-z0-9+/=]+)/i);
+            if (mKey && !privateKey) privateKey = mKey[1];
+            const mAddr = line.match(/Address\s*[=:]\s*(.*)/i);
+            if (mAddr && !ipv6) {
+                const parts = mAddr[1].split(',').map(p => p.trim());
+                for (const p of parts) {
+                    if (p.includes(':')) {
+                        ipv6 = p.split('/')[0];
+                        break;
+                    }
+                }
+            }
+            const mRes = line.match(/Reserved\s*[=:]\s*(\[[^\]]+\])/i);
+            if (mRes && !reserved) {
+                try { reserved = JSON.parse(mRes[1]); } catch (_) {
+                    const nums = mRes[1].replace(/[\[\]\s]/g, '').split(',').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+                    if (nums.length) reserved = nums;
+                }
+            }
+            if (privateKey && ipv6 && Array.isArray(reserved)) break;
+        }
+        if (privateKey && ipv6 && Array.isArray(reserved)) return { privateKey, ipv6, reserved };
+    } catch (_) {}
+    const mK = warpDataStr.match(/Private_key[：:]\s*([A-Za-z0-9+/=]+)/);
+    const mI = warpDataStr.match(/IPV6[：:]\s*([a-fA-F0-9:.]+)/);
+    const mR = warpDataStr.match(/reserved[：:]\s*(\[[\d,\s]+\])/);
+    if (mK && mI && mR) {
+        try {
+            const r = JSON.parse(mR[1]);
+            if (Array.isArray(r)) return { privateKey: mK[1], ipv6: mI[1], reserved: r };
+        } catch (_) {}
+    }
+    return null;
+}
+
+// 从第三方API获取WARP配置
+async function fetchWarpConfig() {
     const warpApiUrls = [
       'https://ygkkk-warp.renky.eu.org',
       'https://warp.xijp.eu.org'
@@ -626,17 +677,33 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
   let warpIpv6 = '2606:4700:110:8dfe:d141:69bb:6b80:925';
   let warpReserved = [78, 135, 76];
 
-  // 如果启用了WARP，先获取WARP配置
-  if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
-    const warpConfig = await fetchWarpConfig();
-    warpPrivateKey = warpConfig.privateKey;
-    warpIpv6 = warpConfig.ipv6;
-    warpReserved = warpConfig.reserved;
-    console.log('📡 WARP配置获取成功');
-    console.log('  Private Key:', warpPrivateKey.substring(0, 10) + '...');
-    console.log('  IPv6:', warpIpv6);
-    console.log('  Reserved:', JSON.stringify(warpReserved));
-  }
+// 如果启用了WARP，先获取WARP配置
+if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
+    if (WARP_DATA) {
+        const warpConfig = parseWarpData(WARP_DATA);
+        if (warpConfig) {
+            warpPrivateKey = warpConfig.privateKey;
+            warpIpv6 = warpConfig.ipv6;
+            warpReserved = warpConfig.reserved;
+            console.log('WARP配置: 使用手动输入数据');
+        } else {
+            console.log('WARP配置: 手动数据解析失败，尝试API获取');
+            const apiConfig = await fetchWarpConfig();
+            warpPrivateKey = apiConfig.privateKey;
+            warpIpv6 = apiConfig.ipv6;
+            warpReserved = apiConfig.reserved;
+        }
+    } else {
+        const warpConfig = await fetchWarpConfig();
+        warpPrivateKey = warpConfig.privateKey;
+        warpIpv6 = warpConfig.ipv6;
+        warpReserved = warpConfig.reserved;
+    }
+    console.log('WARP配置获取成功');
+    console.log(' Private Key:', warpPrivateKey.substring(0, 10) + '...');
+    console.log(' IPv6:', warpIpv6);
+    console.log(' Reserved:', JSON.stringify(warpReserved));
+}
 
   if (WARP_MODE === 'warp') {
     // 强制WARP出站模式
