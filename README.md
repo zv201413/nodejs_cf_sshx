@@ -17,7 +17,7 @@
 
 ## 部署步骤
 
-1. 在游戏机页面找到 IP 和端口后，打开 [参数面板](https://zv201413.github.io/PaperMC_WorldMagic/) 复制命令，粘贴到 `application.properties` 文件
+1. 在游戏机页面找到 IP 和端口后，打开 [参数面板](https://zv201413.github.io/nodejs_sshx/) 复制命令，粘贴到 `application.properties` 文件
 
 2. 将 `index.js`、`package.json`、`application.properties` 三个文件上传到翼龙面板根目录
 
