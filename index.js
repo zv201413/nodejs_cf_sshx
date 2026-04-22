@@ -669,16 +669,34 @@ async function fetchWarpConfig() {
     };
   }
 
-  // 根据WARP_MODE配置出站策略
-  let warpOutConfig = null;
-  let routeConfig = null;
-  let finalOutbound = "direct";
-  let warpPrivateKey = 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=';
-  let warpIpv6 = '2606:4700:110:8dfe:d141:69bb:6b80:925';
-  let warpReserved = [78, 135, 76];
+// 根据WARP_MODE配置出站策略
+let warpOutConfig = null;
+let routeConfig = null;
+let finalOutbound = "direct";
+let warpPrivateKey = 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=';
+let warpIpv6 = '2606:4700:110:8dfe:d141:69bb:6b80:925';
+let warpReserved = [78, 135, 76];
+let warpEndpoint = '162.159.192.1';
+let warpDomainStrategy = 'prefer_ipv6';
+
+async function detectNetworkStack() {
+    const dns = require('dns').promises;
+    let hasIPv4 = false;
+    let hasIPv6 = false;
+    try { await dns.lookup('1.1.1.1', { family: 4 }); hasIPv4 = true; } catch (_) {}
+    try { await dns.lookup('2606:4700:4700::1111', { family: 6 }); hasIPv6 = true; } catch (_) {}
+    console.log(`网络检测: IPv4=${hasIPv4}, IPv6=${hasIPv6}`);
+    if (hasIPv6 && !hasIPv4) return { endpoint: '2606:4700:d0::a29f:c001', strategy: 'prefer_ipv6' };
+    if (hasIPv4 && hasIPv6) return { endpoint: '162.159.192.1', strategy: 'prefer_ipv6' };
+    if (hasIPv4) return { endpoint: '162.159.192.1', strategy: 'prefer_ipv4' };
+    return { endpoint: '2606:4700:d0::a29f:c001', strategy: 'prefer_ipv6' };
+}
 
 // 如果启用了WARP，先获取WARP配置
 if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
+    const netInfo = await detectNetworkStack();
+    warpEndpoint = netInfo.endpoint;
+    warpDomainStrategy = netInfo.strategy;
     if (WARP_DATA) {
         const warpConfig = parseWarpData(WARP_DATA);
         if (warpConfig) {
@@ -717,7 +735,7 @@ warpOutConfig = {
     "private_key": warpPrivateKey,
     "peers": [
         {
-            "address": "2606:4700:d0::a29f:c001",
+            "address": warpEndpoint,
             "port": 2408,
             "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
             "allowed_ips": ["0.0.0.0/0", "::/0"],
@@ -729,7 +747,7 @@ finalOutbound = "warp-out";
 routeConfig = {
     "rules": [
         { "action": "sniff" },
-        { "action": "resolve", "strategy": "prefer_ipv6" },
+        { "action": "resolve", "strategy": warpDomainStrategy },
         { "ip_cidr": ["::/0", "0.0.0.0/0"], "outbound": "warp-out" }
     ],
     "final": "warp-out"
@@ -743,7 +761,7 @@ routeConfig = {
 routeConfig = {
     "rules": [
         { "action": "sniff" },
-        { "action": "resolve", "strategy": "prefer_ipv6" },
+        { "action": "resolve", "strategy": warpDomainStrategy },
         {
             "rule_set": ["openai", "netflix"],
             "outbound": "wireguard-out"
@@ -777,14 +795,14 @@ warpOutConfig = {
     "private_key": warpPrivateKey,
     "peers": [
         {
-            "address": "2606:4700:d0::a29f:c001",
+            "address": warpEndpoint,
             "port": 2408,
             "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
             "allowed_ips": ["0.0.0.0/0", "::/0"],
             "reserved": warpReserved
         }
     ]
-    };
+};
   }
     
 // 确定实际使用的端口 (paper- 参数优先)
