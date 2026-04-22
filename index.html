@@ -403,7 +403,7 @@ function preprocessWarpData(raw) {
     else if (ipv6 && !/\/128$/.test(ipv6)) ipv6 = ipv6.replace(/\/\d+$/, '/128');
   }
 
-  var resMatch = s.match(/(?:Reserved|reserved|保留值)\s*[=:\uff1a]\s*(\[[\d,\s]+\])/);
+  var resMatch = s.match(/(?:Reserved|reserved|保留值)[：:\uff1a\s]*(\[[^\]]+\])/i);
   if (resMatch) reserved = resMatch[1];
 
   if (!privateKey && !ipv6) {
