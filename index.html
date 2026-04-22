@@ -327,9 +327,9 @@ localStorage.setItem('wmg-theme', document.body.classList.contains('light-mode')
 function genUuid() { return crypto.randomUUID(); }
 function $(id) { return document.getElementById(id); }
 function kv(k, v) {
-if (v === '' || v == null) return '';
-if (/[^\w\-\._\/@:]/.test(v)) return k + '="' + v.replace(/"/g, '\\"') + '"';
-return k + '="' + v + '"';
+  if (v === '' || v == null) return '';
+  var escaped = v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+  return k + '="' + escaped + '"';
 }
 function showToast(msg) {
 var d = document.createElement('div');

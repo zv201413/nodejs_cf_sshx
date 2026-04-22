@@ -22,12 +22,12 @@ function parseInstallParams() {
   const installArg = process.argv.find(arg => arg.startsWith('install='));
   if (installArg) {
     const paramsStr = installArg.substring(8);
-    // 支持 paper-name="xxx" 格式 (带连字符的key)
-    const paramRegex = /([a-zA-Z_][a-zA-Z0-9_\-]*)="([^"]*)"/g;
-    let match;
-    while ((match = paramRegex.exec(paramsStr)) !== null) {
-      installParams[match[1]] = match[2];
-    }
+// 支持 paper-name="xxx" 格式 (带连字符的key)
+  const paramRegex = /([a-zA-Z_][a-zA-Z0-9_\-]*)="([^"]*)"/g;
+  let match;
+  while ((match = paramRegex.exec(paramsStr)) !== null) {
+    installParams[match[1]] = match[2].replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\\\/g, '\\');
+  }
   }
   
   // 2. 再从 application.properties 文件中读取 install= 开头的行
@@ -60,18 +60,21 @@ const fileConfig = {};
 if (fs.existsSync(appConfigFile)) {
   try {
     const content = fs.readFileSync(appConfigFile, 'utf-8');
-    content.split('\n').forEach(line => {
-      const trimmed = line.trim();
-      // 跳过 install= 开头的行（已经在 parseInstallParams 中处理）
-      if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('install=')) {
-        const idx = trimmed.indexOf('=');
-        if (idx > 0) {
-          const key = trimmed.substring(0, idx).trim();
-          const value = trimmed.substring(idx + 1).trim();
-          fileConfig[key] = value;
-        }
+content.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    // 跳过 install= 开头的行（已经在 parseInstallParams 中处理）
+    if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('install=')) {
+      const idx = trimmed.indexOf('=');
+      if (idx > 0) {
+        const key = trimmed.substring(0, idx).trim();
+        let value = trimmed.substring(idx + 1).trim();
+        // 去除可能的引号包裹
+        if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+        value = value.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\\\/g, '\\');
+        fileConfig[key] = value;
       }
-    });
+    }
+  });
   } catch (e) {}
 }
 
@@ -585,53 +588,48 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
   let config;
   
 function parseWarpData(warpDataStr) {
-    if (!warpDataStr || typeof warpDataStr !== 'string') return null;
-    try {
-        const lines = warpDataStr.split(/\r?\n/);
-        let inInterface = false;
-        let privateKey = null;
-        let ipv6 = null;
-        let reserved = null;
-        for (const raw of lines) {
-            const line = raw.trim();
-            if (line.startsWith('[') && line.endsWith(']')) {
-                inInterface = line.toLowerCase() === '[interface]';
-                continue;
-            }
-            if (!inInterface) continue;
-            const mKey = line.match(/Private[_]?Key\s*[=:]\s*([A-Za-z0-9+/=]+)/i);
-            if (mKey && !privateKey) privateKey = mKey[1];
-            const mAddr = line.match(/Address\s*[=:]\s*(.*)/i);
-            if (mAddr && !ipv6) {
-                const parts = mAddr[1].split(',').map(p => p.trim());
-                for (const p of parts) {
-                    if (p.includes(':')) {
-                        ipv6 = p.split('/')[0];
-                        break;
-                    }
-                }
-            }
-            const mRes = line.match(/Reserved\s*[=:]\s*(\[[^\]]+\])/i);
-            if (mRes && !reserved) {
-                try { reserved = JSON.parse(mRes[1]); } catch (_) {
-                    const nums = mRes[1].replace(/[\[\]\s]/g, '').split(',').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
-                    if (nums.length) reserved = nums;
-                }
-            }
-            if (privateKey && ipv6 && Array.isArray(reserved)) break;
+  if (!warpDataStr || typeof warpDataStr !== 'string') return null;
+  let privateKey = null, ipv6 = null, ipv4 = null, reserved = null;
+  try {
+    const lines = warpDataStr.split(/\r?\n/);
+    let inInterface = false;
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (line.startsWith('[') && line.endsWith(']')) {
+        inInterface = line.toLowerCase() === '[interface]';
+        continue;
+      }
+      if (!inInterface) continue;
+      const mKey = line.match(/Private[_]?Key\s*[=:]\s*([A-Za-z0-9+/=]+)/i);
+      if (mKey && !privateKey) privateKey = mKey[1];
+      const mAddr = line.match(/Address\s*[=:]\s*(.*)/i);
+      if (mAddr && (!ipv6 || !ipv4)) {
+        const parts = mAddr[1].split(',').map(p => p.trim());
+        for (const p of parts) {
+          if (p.includes(':') && !ipv6) { ipv6 = p.split('/')[0]; }
+          else if (/\d+\.\d+\.\d+\.\d+/.test(p) && !ipv4) { ipv4 = p.split('/')[0]; }
         }
-        if (privateKey && ipv6 && Array.isArray(reserved)) return { privateKey, ipv6, reserved };
-    } catch (_) {}
-    const mK = warpDataStr.match(/Private_key[：:]\s*([A-Za-z0-9+/=]+)/);
-    const mI = warpDataStr.match(/IPV6[：:]\s*([a-fA-F0-9:.]+)/);
-    const mR = warpDataStr.match(/reserved[：:]\s*(\[[\d,\s]+\])/);
-    if (mK && mI && mR) {
-        try {
-            const r = JSON.parse(mR[1]);
-            if (Array.isArray(r)) return { privateKey: mK[1], ipv6: mI[1], reserved: r };
-        } catch (_) {}
+      }
+      const mRes = line.match(/Reserved\s*[=:]\s*(\[[^\]]+\])/i);
+      if (mRes && !reserved) {
+        try { reserved = JSON.parse(mRes[1]); } catch (_) {
+          const nums = mRes[1].replace(/[\[\]\s]/g, '').split(',').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+          if (nums.length) reserved = nums;
+        }
+      }
+      if (privateKey && (ipv6 || ipv4)) break;
     }
-    return null;
+    if (privateKey && (ipv6 || ipv4)) return { privateKey, ipv6: ipv6 || null, ipv4: ipv4 || null, reserved: reserved || null };
+  } catch (_) {}
+  const mK = warpDataStr.match(/Private_key[：:]\s*([A-Za-z0-9+/=]+)/);
+  const mI = warpDataStr.match(/IPV6[：:]\s*([a-fA-F0-9:.]+)/);
+  const mR = warpDataStr.match(/reserved[：:]\s*(\[[\d,\s]+\])/);
+  if (mK && mI) {
+    let r = null;
+    if (mR) { try { r = JSON.parse(mR[1].trim()); } catch(_) {} }
+    return { privateKey: mK[1], ipv6: mI[1], ipv4: null, reserved: r };
+  }
+  return null;
 }
 
 // 从第三方API获取WARP配置
@@ -678,6 +676,7 @@ let routeConfig = null;
 let finalOutbound = "direct";
 let warpPrivateKey = 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=';
 let warpIpv6 = '2606:4700:110:8dfe:d141:69bb:6b80:925';
+let warpIpv4 = '172.16.0.2';
 let warpReserved = [78, 135, 76];
 let warpEndpoint = '162.159.192.1';
 let warpDomainStrategy = 'prefer_ipv6';
@@ -700,30 +699,32 @@ if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
     const netInfo = await detectNetworkStack();
     warpEndpoint = netInfo.endpoint;
     warpDomainStrategy = netInfo.strategy;
-    if (WARP_DATA) {
-        const warpConfig = parseWarpData(WARP_DATA);
-        if (warpConfig) {
-            warpPrivateKey = warpConfig.privateKey;
-            warpIpv6 = warpConfig.ipv6;
-            warpReserved = warpConfig.reserved;
-            console.log('WARP配置: 使用手动输入数据');
-        } else {
-            console.log('WARP配置: 手动数据解析失败，尝试API获取');
-            const apiConfig = await fetchWarpConfig();
-            warpPrivateKey = apiConfig.privateKey;
-            warpIpv6 = apiConfig.ipv6;
-            warpReserved = apiConfig.reserved;
-        }
+if (WARP_DATA) {
+    const warpConfig = parseWarpData(WARP_DATA);
+    if (warpConfig) {
+      warpPrivateKey = warpConfig.privateKey;
+      if (warpConfig.ipv6) warpIpv6 = warpConfig.ipv6;
+      if (warpConfig.ipv4) warpIpv4 = warpConfig.ipv4;
+      if (warpConfig.reserved) warpReserved = warpConfig.reserved;
+      console.log('WARP配置: 使用手动输入数据');
     } else {
-        const warpConfig = await fetchWarpConfig();
-        warpPrivateKey = warpConfig.privateKey;
-        warpIpv6 = warpConfig.ipv6;
-        warpReserved = warpConfig.reserved;
+      console.log('WARP配置: 手动数据解析失败，尝试API获取');
+      const apiConfig = await fetchWarpConfig();
+      warpPrivateKey = apiConfig.privateKey;
+      warpIpv6 = apiConfig.ipv6;
+      warpReserved = apiConfig.reserved;
     }
-    console.log('WARP配置获取成功');
-    console.log(' Private Key:', warpPrivateKey.substring(0, 10) + '...');
-    console.log(' IPv6:', warpIpv6);
-    console.log(' Reserved:', JSON.stringify(warpReserved));
+  } else {
+    const warpConfig = await fetchWarpConfig();
+    warpPrivateKey = warpConfig.privateKey;
+    warpIpv6 = warpConfig.ipv6;
+    warpReserved = warpConfig.reserved;
+  }
+  console.log('WARP配置获取成功');
+  console.log(' Private Key:', warpPrivateKey.substring(0, 10) + '...');
+  console.log(' IPv6:', warpIpv6);
+  console.log(' IPv4:', warpIpv4);
+  console.log(' Reserved:', JSON.stringify(warpReserved));
 }
 
   if (WARP_MODE === 'warp') {
@@ -732,20 +733,20 @@ warpOutConfig = {
     "type": "wireguard",
     "tag": "warp-out",
     "address": [
-        "172.16.0.2/32",
-        `${warpIpv6}/128`
+      `${warpIpv4}/32`,
+      `${warpIpv6}/128`
     ],
     "private_key": warpPrivateKey,
     "peers": [
-        {
-            "address": warpEndpoint,
-            "port": 2408,
-            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-            "allowed_ips": ["0.0.0.0/0", "::/0"],
-            "reserved": warpReserved
-        }
+      {
+        "address": warpEndpoint,
+        "port": 2408,
+        "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+        "allowed_ips": ["0.0.0.0/0", "::/0"],
+        "reserved": warpReserved
+      }
     ]
-};
+  };
 finalOutbound = "warp-out";
 routeConfig = {
     "rules": [
@@ -792,20 +793,20 @@ warpOutConfig = {
     "type": "wireguard",
     "tag": "wireguard-out",
     "address": [
-        "172.16.0.2/32",
-        `${warpIpv6}/128`
+      `${warpIpv4}/32`,
+      `${warpIpv6}/128`
     ],
     "private_key": warpPrivateKey,
     "peers": [
-        {
-            "address": warpEndpoint,
-            "port": 2408,
-            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-            "allowed_ips": ["0.0.0.0/0", "::/0"],
-            "reserved": warpReserved
-        }
+      {
+        "address": warpEndpoint,
+        "port": 2408,
+        "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+        "allowed_ips": ["0.0.0.0/0", "::/0"],
+        "reserved": warpReserved
+      }
     ]
-};
+  };
   }
     
 // 确定实际使用的端口 (paper- 参数优先)
