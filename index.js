@@ -707,27 +707,33 @@ if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
 
   if (WARP_MODE === 'warp') {
     // 强制WARP出站模式
-    warpOutConfig = {
-      "type": "wireguard",
-      "tag": "warp-out",
-      "mtu": 1280,
-      "address": [
+warpOutConfig = {
+    "type": "wireguard",
+    "tag": "warp-out",
+    "address": [
         "172.16.0.2/32",
         `${warpIpv6}/128`
-      ],
-      "private_key": warpPrivateKey,
-      "peers": [
+    ],
+    "private_key": warpPrivateKey,
+    "peers": [
         {
-          "address": "engage.cloudflareclient.com",
-          "port": 2408,
-          "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-          "allowed_ips": ["0.0.0.0/0", "::/0"],
-          "reserved": warpReserved
+            "address": "2606:4700:d0::a29f:c001",
+            "port": 2408,
+            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+            "allowed_ips": ["0.0.0.0/0", "::/0"],
+            "reserved": warpReserved
         }
-      ]
-    };
-    finalOutbound = "warp-out";
-    routeConfig = { "final": "warp-out", "rules": [{ "action": "sniff" }, { "action": "resolve", "strategy": "prefer_ipv6" }] };
+    ]
+};
+finalOutbound = "warp-out";
+routeConfig = {
+    "rules": [
+        { "action": "sniff" },
+        { "action": "resolve", "strategy": "prefer_ipv6" },
+        { "ip_cidr": ["::/0", "0.0.0.0/0"], "outbound": "warp-out" }
+    ],
+    "final": "warp-out"
+};
   } else if (WARP_MODE === 'direct' || WARP_MODE === '') {
       // 直连模式或默认模式(自动)
       if (WARP_MODE === 'direct') {
@@ -761,24 +767,23 @@ routeConfig = {
         }
     ]
 };
-    warpOutConfig = {
-      "type": "wireguard",
-      "tag": "wireguard-out",
-      "mtu": 1280,
-      "address": [
+warpOutConfig = {
+    "type": "wireguard",
+    "tag": "wireguard-out",
+    "address": [
         "172.16.0.2/32",
         `${warpIpv6}/128`
-      ],
-      "private_key": warpPrivateKey,
-      "peers": [
+    ],
+    "private_key": warpPrivateKey,
+    "peers": [
         {
-          "address": "engage.cloudflareclient.com",
-          "port": 2408,
-          "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-          "allowed_ips": ["0.0.0.0/0", "::/0"],
-          "reserved": warpReserved
+            "address": "2606:4700:d0::a29f:c001",
+            "port": 2408,
+            "public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+            "allowed_ips": ["0.0.0.0/0", "::/0"],
+            "reserved": warpReserved
         }
-      ]
+    ]
     };
   }
     
