@@ -632,57 +632,6 @@ const mKey = line.match(/Private[_]?Key\s*[=:]\s*([A-Za-z0-9+/=]+)/i);
   return null;
 }
 
-// 从第三方API获取WARP配置（备用）
-async function fetchWarpConfig() {
-  const warpApiUrls = [
-    'https://api.github.com/repos/ygkkk/cf-warp-sing-box/releases/latest',
-    'https://warp.xijp.eu.org',
-    'https://ygkkk-warp.renky.eu.org'
-  ];
-
-  for (const url of warpApiUrls) {
-    try {
-      const response = await axios.get(url, { timeout: 10000, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
-      let data = response.data;
-      
-      // GitHub API: 从JSON中提取warp.conf内容
-      if (url.includes('github.com') && data.tag_name) {
-        // 获取release中的warp.conf附件
-        const assets = data.assets || [];
-        const warpAsset = assets.find(a => a.name && a.name.includes('warp'));
-        if (warpAsset && warpAsset.browser_download_url) {
-          const warpRes = await axios.get(warpAsset.browser_download_url, { timeout: 10000 });
-          data = warpRes.data;
-        } else {
-          // 尝试从body中提取
-          data = data.body || '';
-        }
-      }
-
-      const privateKeyMatch = data.match(/Private_key[：:]\s*([a-zA-Z0-9+/=]+)/);
-      const ipv6Match = data.match(/IPV6[：:]\s*([a-fA-F0-9:]+)/);
-      const reservedMatch = data.match(/reserved[：:]\s*(\[[\d,\s]+\])/);
-
-      if (privateKeyMatch && ipv6Match && reservedMatch) {
-        return {
-          privateKey: privateKeyMatch[1].trim(),
-          ipv6: ipv6Match[1].trim(),
-          reserved: JSON.parse(reservedMatch[1].trim())
-        };
-      }
-    } catch (e) {
-      console.log(`获取WARP配置失败 (${url}):`, e.message);
-    }
-  }
-
-  console.log('使用默认WARP配置');
-  return {
-    privateKey: 'n8QFIKz0KISY5sAfsNRJK6h7G/p4Xg3o3qJfMGSUMKQ=',
-    ipv6: '2606:4700:110:82bd:43e6:f618:bebf:b258',
-    reserved: [191, 153, 45]
-  };
-}
-
 // 根据WARP_MODE配置出站策略
 let warpOutConfig = null;
 let routeConfig = null;
@@ -707,37 +656,31 @@ async function detectNetworkStack() {
     return { endpoint: '2606:4700:d0::a29f:c001', strategy: 'prefer_ipv6' };
 }
 
-// 如果启用了WARP，先获取WARP配置
+// 如果启用了WARP
 if (WARP_MODE === 'warp' || (WARP_MODE !== 'direct' && WARP_MODE !== '')) {
     const netInfo = await detectNetworkStack();
     warpEndpoint = netInfo.endpoint;
     warpDomainStrategy = netInfo.strategy;
-if (WARP_DATA) {
-    const warpConfig = parseWarpData(WARP_DATA);
-    if (warpConfig) {
-      warpPrivateKey = warpConfig.privateKey;
-      if (warpConfig.ipv6) warpIpv6 = warpConfig.ipv6;
-      if (warpConfig.ipv4) warpIpv4 = warpConfig.ipv4;
-      if (warpConfig.reserved) warpReserved = warpConfig.reserved;
-      console.log('WARP配置: 使用手动输入数据');
+    
+    if (WARP_DATA) {
+      const warpConfig = parseWarpData(WARP_DATA);
+      if (warpConfig) {
+        warpPrivateKey = warpConfig.privateKey;
+        if (warpConfig.ipv6) warpIpv6 = warpConfig.ipv6;
+        if (warpConfig.ipv4) warpIpv4 = warpConfig.ipv4;
+        if (warpConfig.reserved) warpReserved = warpConfig.reserved;
+        console.log('WARP配置: 使用手动输入数据');
+      } else {
+        console.log('WARP配置: 解析失败，使用默认配置');
+      }
     } else {
-      console.log('WARP配置: 手动数据解析失败，尝试API获取');
-      const apiConfig = await fetchWarpConfig();
-      warpPrivateKey = apiConfig.privateKey;
-      warpIpv6 = apiConfig.ipv6;
-      warpReserved = apiConfig.reserved;
+      console.log('WARP配置: 使用默认数据');
     }
-  } else {
-    const warpConfig = await fetchWarpConfig();
-    warpPrivateKey = warpConfig.privateKey;
-    warpIpv6 = warpConfig.ipv6;
-    warpReserved = warpConfig.reserved;
-  }
-  console.log('WARP配置获取成功');
-  console.log(' Private Key:', warpPrivateKey.substring(0, 10) + '...');
-  console.log(' IPv6:', warpIpv6);
-  console.log(' IPv4:', warpIpv4);
-  console.log(' Reserved:', JSON.stringify(warpReserved));
+    console.log('WARP配置获取成功');
+    console.log(' Private Key:', warpPrivateKey.substring(0, 10) + '...');
+    console.log(' IPv6:', warpIpv6);
+    console.log(' IPv4:', warpIpv4);
+    console.log(' Reserved:', JSON.stringify(warpReserved));
 }
 
   if (WARP_MODE === 'warp') {
