@@ -23,11 +23,14 @@ function parseInstallParams() {
   if (installArg) {
     const paramsStr = installArg.substring(8);
 // 支持 paper-name="xxx" 格式 (带连字符的key)
-  const paramRegex = /([a-zA-Z_][a-zA-Z0-9_\-]*)="([^"]*)"/g;
-  let match;
-  while ((match = paramRegex.exec(paramsStr)) !== null) {
-    installParams[match[1]] = match[2].replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\\\/g, '\\');
-  }
+    const paramRegex = /([a-zA-Z_][a-zA-Z0-9_\-]*)="((?:[^"\\]|\\.)*)"/g;
+    let match;
+    while ((match = paramRegex.exec(paramsStr)) !== null) {
+      let val = match[2];
+      // 处理转义字符: \\n -> \n, \\r -> \r, \\" -> ", \\ -> \
+      val = val.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+      installParams[match[1]] = val;
+    }
   }
   
   // 2. 再从 application.properties 文件中读取 install= 开头的行
@@ -86,9 +89,9 @@ console.log('🔧 合并后的 fileConfig:', JSON.stringify(fileConfig));
 
 // 获取配置值（优先环境变量，其次配置文件，支持两种格式）
 function getConfig(envKey, fileKey, defaultValue) {
-  // 支持 fileKey 和 fileKey 的下划线版本（如 paper-hy2-port 和 paper_hy2_port）
+  // 优先级：1. 配置文件/install参数  2. 环境变量  3. 默认值
   const underscoreKey = fileKey.replace(/-/g, '_');
-  return process.env[envKey] || fileConfig[fileKey] || fileConfig[underscoreKey] || defaultValue;
+  return fileConfig[fileKey] || fileConfig[underscoreKey] || process.env[envKey] || defaultValue;
 }
 
 const UPLOAD_URL = getConfig('UPLOAD_URL', 'UPLOAD_URL', '');      // 订阅或节点自动上传地址
@@ -589,9 +592,11 @@ eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==
   
 function parseWarpData(warpDataStr) {
   if (!warpDataStr || typeof warpDataStr !== 'string') return null;
+  // 防御性反转义：如果数据中仍有字面量 \\n，将其转为真实换行
+  let normalized = warpDataStr.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\([\\"])/g, '$1');
   let privateKey = null, ipv6 = null, ipv4 = null, reserved = null;
   try {
-    const lines = warpDataStr.split(/\r?\n/);
+    const lines = normalized.split(/\r?\n/);
     let inInterface = false;
     for (const raw of lines) {
       const line = raw.trim();
@@ -599,8 +604,7 @@ function parseWarpData(warpDataStr) {
         inInterface = line.toLowerCase() === '[interface]';
         continue;
       }
-      if (!inInterface) continue;
-      const mKey = line.match(/Private[_]?Key\s*[=:]\s*([A-Za-z0-9+/=]+)/i);
+const mKey = line.match(/Private[_]?Key\s*[=:]\s*([A-Za-z0-9+/=]+)/i);
       if (mKey && !privateKey) privateKey = mKey[1];
       const mAddr = line.match(/Address\s*[=:]\s*(.*)/i);
       if (mAddr && (!ipv6 || !ipv4)) {
@@ -617,13 +621,13 @@ function parseWarpData(warpDataStr) {
           if (nums.length) reserved = nums;
         }
       }
-      if (privateKey && (ipv6 || ipv4)) break;
+      if (privateKey && ipv6 && reserved) break;
     }
     if (privateKey && (ipv6 || ipv4)) return { privateKey, ipv6: ipv6 || null, ipv4: ipv4 || null, reserved: reserved || null };
   } catch (_) {}
-  const mK = warpDataStr.match(/Private_key[：:]\s*([A-Za-z0-9+/=]+)/);
-  const mI = warpDataStr.match(/IPV6[：:]\s*([a-fA-F0-9:.]+)/);
-  const mR = warpDataStr.match(/reserved[：:]\s*(\[[\d,\s]+\])/);
+  const mK = normalized.match(/Private_key[：:]\s*([A-Za-z0-9+/=]+)/);
+  const mI = normalized.match(/IPV6[：:]\s*([a-fA-F0-9:.]+)/);
+  const mR = normalized.match(/reserved[：:]\s*(\[[\d,\s]+\])/);
   if (mK && mI) {
     let r = null;
     if (mR) { try { r = JSON.parse(mR[1].trim()); } catch(_) {} }
