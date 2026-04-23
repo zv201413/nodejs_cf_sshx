@@ -402,7 +402,7 @@ function preprocessWarpData(raw) {
       if (m) privateKey = m[1];
     }
     
-    // Address - 需要同时提取 IPv4 和 IPv6
+    // Address - 需要同时提取 IPv4 和 IPv6（支持多行 Address）
     if (!ipv4 || !ipv6) {
       var m = line.match(/^Address\s*=\s*(.*)/i);
       if (m) {
@@ -410,13 +410,11 @@ function preprocessWarpData(raw) {
         for (var j = 0; j < parts.length; j++) {
           var p = parts[j].trim();
           if (p.includes(':') && !ipv6) {
-            // IPv6 - 保留原前缀或默认 /128
-            ipv6 = p.replace(/\/\d+$/, '');
-            if (!p.includes('/')) ipv6 += '/128';
+            // IPv6 - 有前缀保留，无前缀添加 /128
+            ipv6 = p.includes('/') ? p : p + '/128';
           } else if (/\d+\.\d+\.\d+\.\d+/.test(p) && !ipv4) {
-            // IPv4 - 保留原前缀 /32
-            ipv4 = p.replace(/\/\d+$/, '');
-            if (!p.includes('/')) ipv4 += '/32';
+            // IPv4 - 有前缀保留，无前缀添加 /32
+            ipv4 = p.includes('/') ? p : p + '/32';
           }
         }
       }
