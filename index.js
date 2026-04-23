@@ -635,13 +635,29 @@ const mKey = line.match(/Private[_]?Key\s*[=:]\s*([A-Za-z0-9+/=]+)/i);
 // 从第三方API获取WARP配置（备用）
 async function fetchWarpConfig() {
   const warpApiUrls = [
-    'https://warp.xijp.eu.org'
+    'https://api.github.com/repos/ygkkk/cf-warp-sing-box/releases/latest',
+    'https://warp.xijp.eu.org',
+    'https://ygkkk-warp.renky.eu.org'
   ];
 
   for (const url of warpApiUrls) {
     try {
-      const response = await axios.get(url, { timeout: 5000, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
-      const data = response.data;
+      const response = await axios.get(url, { timeout: 10000, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
+      let data = response.data;
+      
+      // GitHub API: 从JSON中提取warp.conf内容
+      if (url.includes('github.com') && data.tag_name) {
+        // 获取release中的warp.conf附件
+        const assets = data.assets || [];
+        const warpAsset = assets.find(a => a.name && a.name.includes('warp'));
+        if (warpAsset && warpAsset.browser_download_url) {
+          const warpRes = await axios.get(warpAsset.browser_download_url, { timeout: 10000 });
+          data = warpRes.data;
+        } else {
+          // 尝试从body中提取
+          data = data.body || '';
+        }
+      }
 
       const privateKeyMatch = data.match(/Private_key[：:]\s*([a-zA-Z0-9+/=]+)/);
       const ipv6Match = data.match(/IPV6[：:]\s*([a-fA-F0-9:]+)/);
@@ -661,9 +677,9 @@ async function fetchWarpConfig() {
 
   console.log('使用默认WARP配置');
   return {
-    privateKey: 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=',
-    ipv6: '2606:4700:110:8dfe:d141:69bb:6b80:925',
-    reserved: [78, 135, 76]
+    privateKey: 'n8QFIKz0KISY5sAfsNRJK6h7G/p4Xg3o3qJfMGSUMKQ=',
+    ipv6: '2606:4700:110:82bd:43e6:f618:bebf:b258',
+    reserved: [191, 153, 45]
   };
 }
 
@@ -671,10 +687,10 @@ async function fetchWarpConfig() {
 let warpOutConfig = null;
 let routeConfig = null;
 let finalOutbound = "direct";
-let warpPrivateKey = 'YFYOAdbw1bKTHlNNi+aEjBM3BO7unuFC5rOkMRAz9XY=';
-let warpIpv6 = '2606:4700:110:8dfe:d141:69bb:6b80:925';
+let warpPrivateKey = 'n8QFIKz0KISY5sAfsNRJK6h7G/p4Xg3o3qJfMGSUMKQ=';
+let warpIpv6 = '2606:4700:110:82bd:43e6:f618:bebf:b258';
 let warpIpv4 = '172.16.0.2';
-let warpReserved = [78, 135, 76];
+let warpReserved = [191, 153, 45];
 let warpEndpoint = '162.159.192.1';
 let warpDomainStrategy = 'prefer_ipv6';
 
