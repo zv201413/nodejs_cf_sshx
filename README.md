@@ -4,20 +4,9 @@
 
 ---
 
-## 核心特色
-
-- ✅ **多协议支持**：Hysteria2、TUIC、Reality、VLESS-WS、VMess-WS、AnyTLS、Socks5
-- ✅ **Argo 隧道**：支持 Cloudflare Argo 临时/固定隧道 (代理和终端独立隧道)
-- ✅ **双网页终端**：ttyd (独立Argo隧道) 和 SSHX (sshx.io直连) 可同时启用
-- ✅ **GitHub Gist 同步**：自动同步链接和节点订阅到 Gist
-- ✅ **WARP 出站**：智能检测单栈/双栈，自动选择 IPv4/IPv6 端点连接 Cloudflare
-- ✅ **进程混淆**：二进制文件随机命名，日志无敏感词
-
----
-
 ## 部署步骤
 
-1. 在游戏机页面找到 IP 和端口后，打开 [参数面板](https://zv201413.github.io/nodejs_sshx/) 复制命令，粘贴到 `application.properties` 文件
+1. 在游戏机页面找到 IP 和端口后，打开 [参数面板](https://zv201413.github.io/nodejs_sshx/) 复制命令，粘贴到 `application.properties` 文件，套warp出站[第三方API](https://warp.xijp.eu.org/)
 
 2. 将 `index.js`、`package.json`、`application.properties` 三个文件上传到翼龙面板根目录
 
