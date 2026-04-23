@@ -15,7 +15,7 @@
 4. 复制节点即可使用，如配置了 Gist 也会自动推送
 
 > [!IMPORTANT]
-> 套warp出站需要用到[第三方API](https://warp.xijp.eu.org/)，或者使用你zero trust创建（见 `本地生成 WARP 数据` ），注意要去掉中文
+> 套warp出站需要用到[第三方API（注意去掉中文）](https://warp.xijp.eu.org/)，或者使用你 `zero trust` 账户创建（见 `本地生成 WARP 数据` ）
 > <img width="785" height="249" alt="image" src="https://github.com/user-attachments/assets/44cc436d-e771-46cb-8383-c725ffa66173" />
 ---
 
