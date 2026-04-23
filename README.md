@@ -148,6 +148,25 @@ sudo jq -r '.device_id' /var/lib/cloudflare-warp/reg.json
 - 每个节点建议执行一次 `warp-cli registration new` 获取独立的 private_key，避免同一账户多 IP 并发异常
 - 生成的密钥请妥善保存
 
+#### 替代方案：使用 wgcf（无需 systemd）
+
+官方客户端依赖 systemd，Docker 环境可直接使用 wgcf 工具生成配置。
+
+```bash
+# 1. 下载工具
+curl -fsSL https://github.com/ViRb3/wgcf/releases/download/v2.2.22/wgcf_2.2.22_linux_amd64 -o wgcf
+chmod +x wgcf
+
+# 2. 注册并生成数据
+./wgcf register
+./wgcf generate
+
+# 3. 查看配置
+cat wgcf-profile.conf
+```
+
+生成的文件 `wgcf-profile.conf` 包含 `PrivateKey`、IPv4/IPv6 地址等完整信息，可直接填入 HTML 面板。
+
 ---
 
 ## 常见问题
