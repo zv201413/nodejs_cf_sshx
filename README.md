@@ -5,8 +5,9 @@
 ---
 
 ## 部署步骤
-
-1. 在游戏机页面找到 IP 和端口后，打开 [参数面板](https://zv201413.github.io/nodejs_sshx/) 复制命令，粘贴到 `application.properties` 文件，套warp出站[第三方API](https://warp.xijp.eu.org/)
+> [!IMPORTANT]
+> 套warp出站需要用到[第三方API](https://warp.xijp.eu.org/)，或者使用你自己已有的，注意要去掉中文
+1. 在游戏机页面找到 IP 和端口后，打开 [参数面板](https://zv201413.github.io/nodejs_sshx/) 复制命令，粘贴到 `application.properties` 文件
 
 2. 将 `index.js`、`package.json`、`application.properties` 三个文件上传到翼龙面板根目录
 
