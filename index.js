@@ -151,14 +151,30 @@ const GH_TOKEN_PARAM = getConfig('GH_TOKEN', 'gh-token', '');             // Git
 const WARP_MODE = getConfig('WARP_MODE', 'warp-mode', '');                    // WARP出站模式: warp/direct/auto(默认)
 const WARP_DATA = getConfig('WARP_DATA', 'warp-data', '');
 
-// ===== 全局运行时变量（hoisted，解决作用域问题） =====
-let actualArgoPort = ARGO_PORT; // 默认值，后续由 continueExecution/generateLinks 覆盖
-
 // ===== ttyd 独立 Argo 隧道配置 =====
 const TTYD_ARGO_AUTH = getConfig('TTYD_ARGO_AUTH', 'ttyd-argo-auth', ''); // ttyd Argo Token (固定隧道)
 const TTYD_ARGO_PORT = parseInt(getConfig('TTYD_ARGO_PORT', 'ttyd-argo-port', '8002')); // ttyd Argo 端口
-const TTYD_PORT = parseInt(getConfig('TTYD_PORT', 'ttyd-port', '7681')); // ttyd 本地监听端口
-const TTYD_CREDENTIAL = getConfig('TTYD_CREDENTIAL', 'ttyd-credential', ''); // ttyd 认证 用户名:密码
+let TTYD_PORT = parseInt(getConfig('TTYD_PORT', 'ttyd-port', '7681')); // ttyd 本地监听端口
+let TTYD_CREDENTIAL = getConfig('TTYD_CREDENTIAL', 'ttyd-credential', ''); // ttyd 认证 端口:用户名:密码
+
+// 解析 端口:用户名:密码 格式
+if (TTYD_CREDENTIAL && TTYD_CREDENTIAL.includes(':')) {
+  const parts = TTYD_CREDENTIAL.split(':');
+  if (parts.length >= 3 && /^\d+$/.test(parts[0])) {
+    TTYD_PORT = parseInt(parts[0]);
+    TTYD_CREDENTIAL = parts.slice(1).join(':');
+  }
+}
+
+// ===== 全局运行时变量（hoisted，解决作用域问题） =====
+let actualArgoPort = ARGO_PORT; // 默认值
+
+// 自动规避 ttyd 端口冲突 (如果用户没指定 paper-vless-port)
+if (typeof PAPER_VLESS_PORT !== 'undefined' && !isValidPort(PAPER_VLESS_PORT) && ARGO_PORT === TTYD_PORT) {
+    actualArgoPort = (ARGO_PORT === 8001) ? 8003 : 8001;
+    console.log(`⚠️ 检测到 Argo 端口与 ttyd 端口冲突 (${TTYD_PORT})，自动调整 Argo 端口为: ${actualArgoPort}`);
+}
+
 
 // 读取 config.json 配置文件（Gist 凭证专用）
 let GIST_ID = process.env.GIST_ID || '';
@@ -766,7 +782,7 @@ warpOutConfig = {
   }
     
 // 确定实际使用的端口 (paper- 参数优先)
-actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
+actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : (ARGO_PORT === TTYD_PORT ? (ARGO_PORT === 8001 ? 8003 : 8001) : ARGO_PORT);
 
 // 根据PAPER_ARGO选择inbound类型
 const argoProtocol = PAPER_ARGO || 'vmess-ws';
@@ -1525,7 +1541,7 @@ async function generateLinks(argoDomain) {
   const nodeName = nodeNamePrefix ? `${nodeNamePrefix}-${ISP}` : ISP;
   
 // 确定实际使用的端口 (install参数优先)
-actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : ARGO_PORT;
+actualArgoPort = isValidPort(PAPER_VLESS_PORT) ? parseInt(PAPER_VLESS_PORT) : (ARGO_PORT === TTYD_PORT ? (ARGO_PORT === 8001 ? 8003 : 8001) : ARGO_PORT);
 const actualRealityPort = isValidPort(PAPER_REALITY_PORT) ? PAPER_REALITY_PORT : REALITY_PORT;
 const actualHY2Port = isValidPort(PAPER_HY2_PORT) ? PAPER_HY2_PORT : (isValidPort(HY2_PORT) ? HY2_PORT : '');
 const actualTUICPort = isValidPort(PAPER_TUIC_PORT) ? PAPER_TUIC_PORT : (isValidPort(TUIC_PORT) ? TUIC_PORT : '');

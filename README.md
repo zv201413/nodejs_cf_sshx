@@ -15,7 +15,7 @@
 4. 复制节点即可使用，如配置了 Gist 也会自动推送
 
 > [!IMPORTANT]
-> 套warp出站需要用到[第三方API（注意去掉中文）](https://warp.xijp.eu.org/)，或者使用你 `zero trust` 账户创建（见 `本地生成 WARP 数据` ）
+> 套warp出站支持 [第三方API](https://warp.xijp.eu.org/) 文本，或者使用你 `zero trust` 账户创建（见 `本地生成 WARP 数据` ）。面板已支持自动识别中文标签。
 > <img width="785" height="249" alt="image" src="https://github.com/user-attachments/assets/44cc436d-e771-46cb-8383-c725ffa66173" />
 ---
 
@@ -38,7 +38,7 @@
 | `ttyd-argo-auth` | ttyd Argo 固定隧道 Token | `eyJh...` |
 | `ttyd-argo-port` | ttyd Argo 端口 | `8002` |
 | `ttyd-port` | ttyd 本地监听端口 | `7681` |
-| `ttyd-credential` | ttyd 认证凭证 (用户名:密码) | `admin:123456` |
+| `ttyd-credential` | ttyd 认证凭证 (端口:用户名:密码) | `8080:admin:123456` |
 
 ---
 
